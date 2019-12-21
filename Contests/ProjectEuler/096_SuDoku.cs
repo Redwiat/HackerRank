@@ -20,10 +20,10 @@ public static class Extensions
 
   #region Arrays
 
-  public static int[] GetColumn(this int[,] matrix, int columnNumber)
+  public static int[] GetColumn(this int[,] matrix, int colNumber)
   {
     return Enumerable.Range(0, matrix.GetLength(0))
-      .Select(x => matrix[x, columnNumber])
+      .Select(x => matrix[x, colNumber])
       .ToArray();
   }
 
@@ -106,6 +106,29 @@ public static class Extensions
     }
     return result;
   }
+
+  public static string ToString2(this Dictionary<int, Dictionary<int, List<int>>> source)
+  {
+    var result = new StringBuilder();
+    foreach (var rows in source)
+    {
+      foreach (var cell in rows.Value)
+      {
+        result.Append("{");
+        var cellContent = new StringBuilder();
+        foreach (var possibility in cell.Value)
+        {
+          cellContent.Append(possibility + ", ");
+        }
+
+        var pad = 40 - cellContent.Length;
+        result.Append(cellContent.ToString());
+        result.Append("}".PadRight(pad < 40 ? pad : 42));
+      }
+      result.Append("\n");
+    }
+    return result.ToString();
+  }
 #endif
 
   #endregion
@@ -114,7 +137,6 @@ public static class Extensions
 
 class Solution
 {
-
 
   private static bool NoneOfTheOthersCanFitHere(int[,] array, List<int> others, int rowNumber, int colNumber)
   {
@@ -308,6 +330,7 @@ class Solution
   {
     return GetDim(helperDictionary, dim, false);
   }
+
   private static List<List<int>> GetAllRow(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int dim)
   {
     return GetDim(helperDictionary, dim, true, true);
@@ -341,7 +364,7 @@ class Solution
     return ret;
   }
 
-  private static void UpdateDictionary(int[,] array, int count)
+  private static void UpdateDictionary(int[,] array)
   {
     for (var i = 0; i < 9; i++)
     {
@@ -361,11 +384,25 @@ class Solution
           //Remove number from all cells in this col:
           for (int k = 0; k < 9; k++)
             _helperDictionary[k][j].Remove(number);
+
+          //Remove number from the neighbors
+          var initNeighborRowNumber = GetInitNumberForNeighbor(i);
+          var initNeighborColNumber = GetInitNumberForNeighbor(j);
+          for (var k = initNeighborRowNumber; k < initNeighborRowNumber + 3; k++)
+          {
+            for (int l = initNeighborColNumber; l < +initNeighborColNumber + 3; l++)
+            {
+              _helperDictionary[k][l].Remove(number);
+            }
+          }
         }
       }
     }
+  }
 
-    //Intersect Rows/Cols to try eliminate possibilities
+  private static void BlockInteraction(int[,] array)
+  {
+
     for (var i = 0; i < 9; i = i + 3)
     {
       for (var j = 0; j < 9; j = j + 3)
@@ -402,17 +439,14 @@ class Solution
           }
 
           colsUnions.Add(k, new List<int>(unionCols.Distinct().Intersect(missingInNei)));
-
         }
 
-        #region Rows
+        #region Block row Interaction
 
         if (rowsUnions.Count > 0)
         {
-
           foreach (var item in rowsUnions)
           {
-
             var correctedRow = initNeighborRowNumber + item.Key;
 
             #region MyRegion
@@ -492,7 +526,6 @@ class Solution
                 continue;
 
               valuesMissingInOtherCols.Add(possiblevalue);
-
             }
 
             valuesMissingInOtherCols = valuesMissingInOtherCols.Intersect(item.Value.ToList()).ToList();
@@ -503,7 +536,6 @@ class Solution
               for (int l = initNeighborRowNumber; l < +initNeighborRowNumber + 3; l++)
               {
                 {
-
                   if (l != correctedRow
                       && array[l, k] == 0
                       && _helperDictionary[l][k].Count > 0)
@@ -517,8 +549,8 @@ class Solution
                         {
                           //shouldnt be removed
                         }
-#endif
                         var x = l + " - " + k.ToString() + " - Not=> " + toRemove;
+#endif
                         _helperDictionary[l][k].Remove(toRemove);
                       }
                     }
@@ -528,20 +560,17 @@ class Solution
             }
 
             #endregion
-
           }
-
         }
 
         #endregion
 
-        #region Cols
+        #region Block column Interaction
 
         if (colsUnions.Count > 0)
         {
           foreach (var item in colsUnions)
           {
-
             var correctedCol = initNeighborColNumber + item.Key;
 
             #region MyRegion
@@ -577,17 +606,14 @@ class Solution
                       {
                         //shouldnt be removed
                       }
-#endif
-
                       var x = k + " - " + correctedCol.ToString() + " - Not=> " + toRemove;
+#endif
                       _helperDictionary[k][correctedCol].Remove(toRemove);
                     }
                   }
                 }
               }
-
             }
-
 
             #endregion
 
@@ -617,15 +643,12 @@ class Solution
                   has = true;
                   break;
                 }
-
-                ;
               }
 
               if (has)
                 continue;
 
               valuesMissingInOtherRows.Add(possiblevalue);
-
             }
 
             valuesMissingInOtherRows = valuesMissingInOtherRows.Intersect(item.Value.ToList()).ToList();
@@ -635,7 +658,6 @@ class Solution
             {
               for (int l = initNeighborRowNumber; l < +initNeighborRowNumber + 3; l++)
               {
-
                 if (k != correctedCol
                     && array[l, k] == 0
                     && _helperDictionary[l][k].Count > 0)
@@ -649,8 +671,8 @@ class Solution
                       {
                         //shouldnt be removed
                       }
-#endif
                       var x = l + " - " + k.ToString() + " - Not=> " + toRemove;
+#endif
                       _helperDictionary[l][k].Remove(toRemove);
                     }
                   }
@@ -659,20 +681,24 @@ class Solution
             }
 
             #endregion
-
           }
-
         }
 
         #endregion
 
+        #region Block / Block Interaction
+
+
+
+        #endregion
       }
     }
+  }
 
-
+  private static void NakedSubSets(int count)
+  {
     for (var i = 0; i < 9; i++)
     {
-
       var col = GetCol(_helperDictionary, i);
       var row = GetRow(_helperDictionary, i);
 
@@ -709,7 +735,6 @@ class Solution
         }
       }
 
-
       #endregion
 
       #region Rows
@@ -726,6 +751,7 @@ class Solution
           }
         }
       }
+
       listToRemove2 = listToRemove2.Distinct().ToList();
       if (listToRemove2.Count > 0)
       {
@@ -738,7 +764,6 @@ class Solution
             {
               list.RemoveAll(x => item.Contains(x));
             }
-
           }
         }
       }
@@ -752,7 +777,12 @@ class Solution
       if (count > 10)
       {
         #region Cols
+
         var countCol = new Dictionary<int, int>();
+
+#if DEBUG
+        var x = _helperDictionary.ToString2();
+#endif
         foreach (var item in col)
         {
           foreach (var val in item)
@@ -762,6 +792,7 @@ class Solution
             countCol[val]++;
           }
         }
+
         var listCols = (from item in countCol where item.Value == 2 select item.Key).ToList();
         if (listCols.Count == 2)
         {
@@ -773,9 +804,11 @@ class Solution
             }
           }
         }
+
         #endregion
 
         #region Rows
+
         var countRows = new Dictionary<int, int>();
         foreach (var item in col)
         {
@@ -786,6 +819,7 @@ class Solution
             countRows[val]++;
           }
         }
+
         var listRows = (from item in countRows where item.Value == 2 select item.Key).ToList();
         if (listRows.Count == 2)
         {
@@ -797,14 +831,12 @@ class Solution
             }
           }
         }
+
         #endregion
-
-
       }
+
       #endregion
-
     }
-
   }
 
 
@@ -890,31 +922,13 @@ class Solution
     return true;
   }
 
-#if DEBUG
-
-
-
-  private static Dictionary<int, Dictionary<int, int>> _helperDictionarySolution;
-
-  private static void LoadSolution(string sol)
-  {
-    _helperDictionarySolution = new Dictionary<int, Dictionary<int, int>>();
-    for (int i = 0; i < 9; i++)
-    {
-      _helperDictionarySolution.Add(i, new Dictionary<int, int>());
-      for (int j = 0; j < 9; j++)
-      {
-        _helperDictionarySolution[i].Add(j, int.Parse(sol[i * 9 + j].ToString()));
-      }
-    }
-  }
-#endif
 
   public static int[,] Solve(int[,] array)
   {
     var count = 0;
     var cloneArray = (int[,])array.Clone();
     FillDictionary(array);
+    UpdateDictionary(array);
     while (!Verify(array))
     {
 
@@ -931,13 +945,16 @@ class Solution
         }
       }
 
-      UpdateDictionary(array, count);
+      UpdateDictionary(array);
+      BlockInteraction(array);
+      NakedSubSets(count);
       count++;
 
     }
 
     return array;
   }
+
 
 
   static void Main(string[] args)
