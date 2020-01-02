@@ -366,7 +366,7 @@ class Solution
                     if (_candidatesDictionary[correctedRow][k].Contains(toRemove))
                     {
 #if DEBUG
-                      if (_helperDictionarySolution[correctedRow][k] == toRemove)
+                      if (checkSol && _helperDictionarySolution[correctedRow][k] == toRemove)
                       {
                         //shouldnt be removed
                       }
@@ -434,7 +434,7 @@ class Solution
                       if (_candidatesDictionary[l][k].Contains(toRemove))
                       {
 #if DEBUG
-                        if (_helperDictionarySolution[l][k] == toRemove)
+                        if (checkSol && _helperDictionarySolution[l][k] == toRemove)
                         {
                           //shouldnt be removed
                         }
@@ -492,13 +492,10 @@ class Solution
                     if (_candidatesDictionary[k][correctedCol].Contains(toRemove))
                     {
 #if DEBUG
-                      if (_helperDictionarySolution[k][correctedCol] == toRemove)
+                      if (checkSol && _helperDictionarySolution[k][correctedCol] == toRemove)
                       {
                         //shouldnt be removed
                       }
-
-
-                      var x = k + " - " + correctedCol.ToString() + " - Not=> " + toRemove;
 #endif
                       _candidatesDictionary[k][correctedCol].Remove(toRemove);
                     }
@@ -554,19 +551,17 @@ class Solution
               {
                 if (k != correctedCol
                     && array[l, k] == 0
-                    && _candidatesDictionary[l][k].Count > 0)
+                    && _candidatesDictionary[l][k].Count > 1)
                 {
                   foreach (var toRemove in valuesMissingInOtherRows)
                   {
                     if (_candidatesDictionary[l][k].Contains(toRemove))
                     {
 #if DEBUG
-                      if (_helperDictionarySolution[l][k] == toRemove)
+                      if (checkSol && _helperDictionarySolution[l][k] == toRemove)
                       {
                         //shouldnt be removed
                       }
-
-                      var x = l + " - " + k.ToString() + " - Not=> " + toRemove;
 #endif
                       _candidatesDictionary[l][k].Remove(toRemove);
                     }
@@ -625,6 +620,12 @@ class Solution
           {
             if (list.Except(item).Any())
             {
+#if DEBUG
+              if (checkSol && item.Contains(_helperDictionarySolution[j][i]))
+              {
+                //shouldnt be removed
+              }
+#endif
               list.RemoveAll(x => item.Contains(x));
             }
           }
@@ -635,6 +636,9 @@ class Solution
 
       #region Rows
 
+      col = GetCol(_candidatesDictionary, i);
+      row = GetRow(_candidatesDictionary, i);
+      box = GetBox(_candidatesDictionary, i);
       var listToRemove2 = new List<List<int>>();
       foreach (var expr in row)
       {
@@ -658,6 +662,12 @@ class Solution
           {
             if (list.Except(item).Any())
             {
+#if DEBUG
+              if (checkSol && item.Contains(_helperDictionarySolution[i][j]))
+              {
+                //shouldnt be removed
+              }
+#endif
               list.RemoveAll(x => item.Contains(x));
             }
           }
@@ -668,6 +678,9 @@ class Solution
 
       #region Box
 
+      col = GetCol(_candidatesDictionary, i);
+      row = GetRow(_candidatesDictionary, i);
+      box = GetBox(_candidatesDictionary, i);
       var listToRemoveBox = new List<List<int>>();
       foreach (var expr in box)
       {
@@ -693,6 +706,12 @@ class Solution
             {
               if (list.Except(item).Any())
               {
+#if DEBUG
+                if (checkSol && item.Contains(_helperDictionarySolution[bi][bj]))
+                {
+                  //shouldnt be removed
+                }
+#endif
                 list.RemoveAll(x => item.Contains(x));
               }
             }
@@ -706,185 +725,158 @@ class Solution
 
       #region  Naked Subset hard
 
-      //if (count > 25)
+      #region Cols
+
+      col = GetCol(_candidatesDictionary, i);
+      row = GetRow(_candidatesDictionary, i);
+      box = GetBox(_candidatesDictionary, i);
+
+      var countCol = new Dictionary<int, int>();
+      foreach (var item in col)
       {
-        #region Cols
+        foreach (var val in item)
+        {
+          if (!countCol.ContainsKey(val))
+            countCol.Add(val, 0);
+          countCol[val]++;
+        }
+      }
 
-        var countCol = new Dictionary<int, int>();
+      var listCols = (from item in countCol where item.Value == 2 select item.Key).ToList();
+      if (listCols.Count == 2)
+      {
+        #region naked subset
+        var good = 0;
         foreach (var item in col)
-        {
-          foreach (var val in item)
-          {
-            if (!countCol.ContainsKey(val))
-              countCol.Add(val, 0);
-            countCol[val]++;
-          }
-        }
+          if (item.Count == 2 && item.Contains(listCols[0]) && item.Contains(listCols[1]))
+            good++;
 
-        var listCols = (from item in countCol where item.Value == 2 select item.Key).ToList();
-        if (listCols.Count == 2)
+        if (good == 2)
         {
-          #region naked subset
-          var good = 0;
-          foreach (var item in col)
-            if (item.Count == 2 && item.Contains(listCols[0]) && item.Contains(listCols[1]))
-              good++;
-
-          if (good == 2)
+          for (var j = 0; j < 9; j++)
           {
-            for (var j = 0; j < 9; j++)
+            var cleaned = _candidatesDictionary[j][i].Intersect(listCols).ToList();
+            if (cleaned.Count() == listCols.Count())
             {
-              var cleaned = _candidatesDictionary[j][i].Intersect(listCols).ToList();
-              if (cleaned.Count() == listCols.Count())
+#if DEBUG
+              if (checkSol && !cleaned.Contains(_helperDictionarySolution[j][i]))
               {
-                _candidatesDictionary[j][i] = cleaned;
+                //shouldnt be removed
               }
+#endif
+              _candidatesDictionary[j][i] = cleaned;
             }
           }
-          #endregion
+        }
+        #endregion
 
-          #region hidden subset
+        #region hidden subset
 
-          var goodhidden = true;
-          foreach (var item in col)
-            if ((!item.Contains(listCols[0]) && item.Contains(listCols[1])) || (item.Contains(listCols[0]) && !item.Contains(listCols[1])))
-              goodhidden = false;
+        var goodhidden = true;
+        foreach (var item in col)
+          if ((!item.Contains(listCols[0]) && item.Contains(listCols[1])) || (item.Contains(listCols[0]) && !item.Contains(listCols[1])))
+            goodhidden = false;
 
-          if (goodhidden)
+        if (goodhidden)
+        {
+          for (var j = 0; j < 9; j++)
           {
-            for (var j = 0; j < 9; j++)
+            var cleaned = _candidatesDictionary[j][i].Intersect(listCols).ToList();
+            if (cleaned.Count() == listCols.Count())
             {
-              var cleaned = _candidatesDictionary[j][i].Intersect(listCols).ToList();
-              if (cleaned.Count() == listCols.Count())
+#if DEBUG
+              if (checkSol && !cleaned.Contains(_helperDictionarySolution[j][i]))
               {
-                _candidatesDictionary[j][i] = cleaned;
+                //shouldnt be removed
               }
+#endif
+              _candidatesDictionary[j][i] = cleaned;
             }
           }
-
-          #endregion
-
         }
-
-        //if (count > 100)
-        //{
-        //  var listCols3 = (from item in countCol where item.Value > 2 select item.Key).ToList();
-        //  if (listCols3.Count == 2)
-        //  {
-        //    var good = 0;
-        //    foreach (var item in col)
-        //      if (item.Contains(listCols3[0]) && item.Contains(listCols3[1]))
-        //        good++;
-
-        //    if (good > 2)
-        //    {
-        //      for (var j = 0; j < 9; j++)
-        //      {
-        //        var cleaned = _candidatesDictionary[j][i].Intersect(listCols3).ToList();
-        //        if (cleaned.Count() != listCols3.Count() && _candidatesDictionary[j][i].Count > 0)
-        //        {
-        //          _candidatesDictionary[j][i].Remove(listCols3[0]);
-        //          _candidatesDictionary[j][i].Remove(listCols3[1]);
-
-        //        }
-        //      }
-        //    }
-        //  }
-        //}
-
 
         #endregion
 
-        #region Rows
+      }
 
-        var countRows = new Dictionary<int, int>();
-        foreach (var item in col)
+      #endregion
+
+      #region Rows
+
+      col = GetCol(_candidatesDictionary, i);
+      row = GetRow(_candidatesDictionary, i);
+      box = GetBox(_candidatesDictionary, i);
+
+      var countRows = new Dictionary<int, int>();
+      foreach (var item in row)
+      {
+        foreach (var val in item)
         {
-          foreach (var val in item)
-          {
-            if (!countRows.ContainsKey(val))
-              countRows.Add(val, 0);
-            countRows[val]++;
-          }
+          if (!countRows.ContainsKey(val))
+            countRows.Add(val, 0);
+          countRows[val]++;
         }
+      }
 
-        var listRows = (from item in countRows where item.Value == 2 select item.Key).ToList();
-        if (listRows.Count == 2)
+      var listRows = (from item in countRows where item.Value == 2 select item.Key).ToList();
+      if (listRows.Count == 2)
+      {
+        #region naked subset
+        var good = 0;
+        foreach (var item in row)
+          if (item.Count == 2 && item.Contains(listRows[0]) && item.Contains(listRows[1]))
+            good++;
+
+        if (good == 2)
         {
-          #region naked subset
-          var good = 0;
-          foreach (var item in row)
-            if (item.Count == 2 && item.Contains(listRows[0]) && item.Contains(listRows[1]))
-              good++;
-
-          if (good == 2)
+          for (var j = 0; j < 9; j++)
           {
-            for (var j = 0; j < 9; j++)
+            var cleaned = _candidatesDictionary[i][j].Intersect(listRows).ToList();
+            if (cleaned.Count() == listRows.Count())
             {
-              var cleaned = _candidatesDictionary[i][j].Intersect(listRows).ToList();
-              if (cleaned.Count() == listRows.Count())
+#if DEBUG
+              if (checkSol && !cleaned.Contains(_helperDictionarySolution[i][j]))
               {
-                _candidatesDictionary[i][j] = cleaned;
+                //shouldnt be removed
               }
+#endif
+              _candidatesDictionary[i][j] = cleaned;
             }
           }
-          #endregion
+        }
+        #endregion
 
-          #region hidden subset
+        #region hidden subset
 
-          var goodhidden = true;
-          foreach (var item in row)
-            if ((!item.Contains(listRows[0]) && item.Contains(listRows[1])) || (item.Contains(listRows[0]) && !item.Contains(listRows[1])))
-              goodhidden = false;
+        var goodhidden = true;
+        foreach (var item in row)
+          if ((!item.Contains(listRows[0]) && item.Contains(listRows[1])) || (item.Contains(listRows[0]) && !item.Contains(listRows[1])))
+            goodhidden = false;
 
-          if (goodhidden)
+        if (goodhidden)
+        {
+          for (var j = 0; j < 9; j++)
           {
-            for (var j = 0; j < 9; j++)
+            var cleaned = _candidatesDictionary[i][j].Intersect(listRows).ToList();
+            if (cleaned.Count() == listRows.Count())
             {
-              var cleaned = _candidatesDictionary[j][i].Intersect(listRows).ToList();
-              if (cleaned.Count() == listRows.Count())
+
+#if DEBUG
+              if (checkSol && !cleaned.Contains(_helperDictionarySolution[i][j]))
               {
-                _candidatesDictionary[j][i] = cleaned;
+                //shouldnt be removed
               }
+#endif
+
+              _candidatesDictionary[i][j] = cleaned;
             }
           }
-
-          #endregion
         }
-
-        //if (count > 100)
-        //{
-        //  col = GetCol(_candidatesDictionary, i);
-        //  row = GetRow(_candidatesDictionary, i);
-        //  box = GetBox(_candidatesDictionary, i);
-
-        //  var listRows3 = (from item in countRows where item.Value > 2 select item.Key).ToList();
-        //  if (listRows3.Count == 2)
-        //  {
-        //    var good = 0;
-        //    foreach (var item in row)
-        //      if (item.Contains(listRows3[0]) && item.Contains(listRows3[1]))
-        //        good++;
-
-        //    if (good > 2)
-        //    {
-        //      for (var j = 0; j < 9; j++)
-        //      {
-        //        var cleaned = _candidatesDictionary[i][j].Intersect(listRows3).ToList();
-        //        if (cleaned.Count() != listRows3.Count() && _candidatesDictionary[i][j].Count > 0)
-        //        {
-        //          _candidatesDictionary[i][j].Remove(listRows3[0]);
-        //          _candidatesDictionary[i][j].Remove(listRows3[1]);
-
-        //        }
-        //      }
-        //    }
-        //  }
-
-        //}
 
         #endregion
       }
+
+      #endregion
 
       #endregion
     }
@@ -939,9 +931,27 @@ class Solution
                           {
 
                             if (_candidatesDictionary[i][k].Contains(candidate))
+                            {
+#if DEBUG
+                              if (checkSol && _helperDictionarySolution[i][k] == candidate)
+                              {
+                                //shouldnt be removed
+                              }
+#endif
+
                               _candidatesDictionary[i][k].Remove(candidate);
+                            }
+
                             if (_candidatesDictionary[h][k].Contains(candidate))
+                            {
+#if DEBUG
+                              if (checkSol && _helperDictionarySolution[h][k] == candidate)
+                              {
+                                //shouldnt be removed
+                              }
+#endif
                               _candidatesDictionary[h][k].Remove(candidate);
+                            }
                           }
 
                         }
@@ -1272,7 +1282,6 @@ class Solution
     return array;
   }
 
-
   static void Main(string[] args)
   {
     var sudoku = new int[9, 9];
@@ -1303,7 +1312,7 @@ class Solution
 
 
 #if DEBUG
-  
+
   public static void SolveTestCases()
   {
 
@@ -1356,22 +1365,20 @@ class Solution
     "904200007010000000000706500000800090020904060040002000001607000000000030300005702",
     "000700800006000031040002000024070000010030080000060290000800070860000500002006000",
     "001007090590080001030000080000005800050060020004100000080000030100020079020700400",
-    "000003017015009008060000000100007000009000200000500004000000020500600340340200000",
+    "000003017015009008060000000100007000009000200000500004000000020500600340340200000", // 294863517715429638863751492152947863479386251638512974986134725521678349347295186
     "300200000000107000706030500070009080900020004010800050009040301000702000000008006",
+
     //Not included
-    
+    "105000370000000200097300010000053102300801004201470000070008640008000000012000807", //125649378834715296697382415746953182359821764281476953573298641468137529912564837
+
   };
 
-    var solutions = new List<string>()
-      {
-        "483921657967345821251876493548132976729564138136798245372689514814253769695417382",
-        "245981376169276584837564219976125438513498627482736951391657842728449165654112793",
-        "245981376169276584837564219976125438513498627482736951391657842728449165654112793",
-      };
-    var count = 1;
 
-    LoadSolution(solutions[0]);
+    //sudokus.Clear(); sudokus.Add("000003017015009008060000000100007000009000200000500004000000020500600340340200000");
+    LoadSolution("294863517715429638863751492152947863479386251638512974986134725521678349347295186");
+
     var total = 0.0;
+    var count = 1;
     foreach (var sudoku in sudokus)
     {
       //LoadSolution(solutions[count - 1]);
@@ -1386,4 +1393,5 @@ class Solution
   }
 
 #endif
+
 }
