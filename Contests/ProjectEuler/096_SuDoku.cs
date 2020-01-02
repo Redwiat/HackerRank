@@ -1,20 +1,13 @@
-using System.CodeDom.Compiler;
-using System.Collections.Generic;
-using System.Collections;
-using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.Serialization;
-using System.Text.RegularExpressions;
-using System.Text;
+
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Resources;
+using System.Text;
 
 //Project Euler #96: Su Doku - Without backtracking!
 //https://www.hackerrank.com/contests/projecteuler/challenges/euler096/problem
-
 
 public static class Extensions
 {
@@ -96,6 +89,7 @@ public static class Extensions
   #region Debug
 
 #if DEBUG
+
   public static string ToString2(this int[,] source, int pad = 10)
   {
     var result = "";
@@ -103,7 +97,8 @@ public static class Extensions
     {
       for (int j = source.GetLowerBound(1); j <= source.GetUpperBound(1); j++)
         result += source.GetValue(i, j).ToString().PadLeft(pad);
-      result += "\n";
+      if (pad != 0)
+        result += "\n";
     }
     return result;
   }
@@ -130,6 +125,7 @@ public static class Extensions
     }
     return result.ToString();
   }
+
 #endif
 
   #endregion
@@ -139,19 +135,18 @@ public static class Extensions
 class Solution
 {
 
-  #region Dictionary
-
-  private static List<List<int>> GetRow(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int dim)
+  #region Helpers
+  private static List<List<int>> GetRow(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int dim)
   {
-    return GetDim(helperDictionary, dim, true);
+    return GetDim(candidatesDictionary, dim, true);
   }
 
-  private static List<List<int>> GetCol(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int dim)
+  private static List<List<int>> GetCol(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int dim)
   {
-    return GetDim(helperDictionary, dim, false);
+    return GetDim(candidatesDictionary, dim, false);
   }
 
-  private static List<List<int>> GetBox(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int box, bool includeEmpty = false)
+  private static List<List<int>> GetBox(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int box, bool includeEmpty = false)
   {
     var ret = new List<List<int>>();
     var row = GetBoxRow(box);
@@ -160,7 +155,7 @@ class Solution
     {
       for (var j = col; j < col + 3; j++)
       {
-        var list = helperDictionary[i][j];
+        var list = candidatesDictionary[i][j];
         if (includeEmpty || list.Count > 0)
           ret.Add(list);
       }
@@ -221,17 +216,7 @@ class Solution
     return (box == 0 || box == 3 || box == 6) ? 0 : ((box == 1 || box == 4 || box == 7) ? 3 : 6);
   }
 
-  private static List<List<int>> GetAllRow(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int dim)
-  {
-    return GetDim(helperDictionary, dim, true, true);
-  }
-
-  private static List<List<int>> GetAllCol(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int dim)
-  {
-    return GetDim(helperDictionary, dim, false, true);
-  }
-
-  private static List<List<int>> GetDim(Dictionary<int, Dictionary<int, List<int>>> helperDictionary, int dim,
+  private static List<List<int>> GetDim(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int dim,
     bool byRow, bool includeEmpty = false)
   {
     var ret = new List<List<int>>();
@@ -239,13 +224,13 @@ class Solution
     {
       if (byRow)
       {
-        var list = _candidatesDictionary[dim][i];
+        var list = candidatesDictionary[dim][i];
         if (includeEmpty || list.Count > 0)
           ret.Add(list);
       }
       else
       {
-        var list = _candidatesDictionary[i][dim];
+        var list = candidatesDictionary[i][dim];
         if (includeEmpty || list.Count > 0)
           ret.Add(list);
       }
@@ -254,26 +239,26 @@ class Solution
     return ret;
   }
 
-  private static void UpdateDictionary(int[,] array)
+  private static void UpdateDictionary(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
   {
     for (var i = 0; i < 9; i++)
     {
       for (var j = 0; j < 9; j++)
       {
         var number = array[i, j];
-        var list = _candidatesDictionary[i][j];
+        var list = candidatesDictionary[i][j];
         if (number != 0 && list.Count != 0)
         {
           //clear this cell
-          _candidatesDictionary[i][j].Clear();
+          candidatesDictionary[i][j].Clear();
 
           //Remove number from all cells in this row:
           for (int k = 0; k < 9; k++)
-            _candidatesDictionary[i][k].Remove(number);
+            candidatesDictionary[i][k].Remove(number);
 
           //Remove number from all cells in this col:
           for (int k = 0; k < 9; k++)
-            _candidatesDictionary[k][j].Remove(number);
+            candidatesDictionary[k][j].Remove(number);
 
           //Remove number from the neighbors
           var initNeighborRowNumber = GetInitNumberForNeighbor(i);
@@ -282,7 +267,7 @@ class Solution
           {
             for (int l = initNeighborColNumber; l < initNeighborColNumber + 3; l++)
             {
-              _candidatesDictionary[k][l].Remove(number);
+              candidatesDictionary[k][l].Remove(number);
             }
           }
         }
@@ -290,7 +275,173 @@ class Solution
     }
   }
 
-  private static void BlockInteraction(int[,] array)
+  private static List<List<int>> GetMissingInNeighborByRow(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary,
+    int row, int col)
+  {
+    return GetMissingInNeighborByDim(candidatesDictionary, row, col, true);
+  }
+
+  private static List<List<int>> GetMissingInNeighborByCol(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary,
+    int row, int col)
+  {
+    return GetMissingInNeighborByDim(candidatesDictionary, row, col, false);
+  }
+
+  private static List<List<int>> GetMissingInNeighborByDim(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary,
+    int row, int col, bool byRow)
+  {
+    var ret = new List<List<int>>();
+    var dim = byRow ? col : row;
+    for (var i = dim; i < dim + 3; i++)
+    {
+      if (byRow)
+      {
+        var list = candidatesDictionary[row][i];
+        if (list.Count > 0)
+          ret.Add(list);
+      }
+      else
+      {
+        var list = candidatesDictionary[i][col];
+        if (list.Count > 0)
+          ret.Add(list);
+      }
+    }
+
+    return ret;
+  }
+
+  private static Dictionary<int, Dictionary<int, List<int>>> GetAndFillDictionary(int[,] array)
+  {
+    var candidatesDictionary = new Dictionary<int, Dictionary<int, List<int>>>();
+    for (var i = 0; i < 9; i++)
+    {
+      candidatesDictionary.Add(i, new Dictionary<int, List<int>>());
+      for (var j = 0; j < 9; j++)
+      {
+        candidatesDictionary[i].Add(j, new List<int>(Extensions.PossibleValues));
+      }
+    }
+    return candidatesDictionary;
+  }
+
+  private static bool CanFitInAnotherPlaceInBox(int rowNumber, int colNumber, int initNeighborRowNumber, int initNeighborColNumber,
+    int missingValue, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
+  {
+    var count = 0;
+    var savek = 0;
+    var savel = 0;
+    for (var k = initNeighborRowNumber; k < initNeighborRowNumber + 3; k++)
+    {
+      for (int l = initNeighborColNumber; l < +initNeighborColNumber + 3; l++)
+      {
+        if ((candidatesDictionary[k][l]).Contains(missingValue))
+        {
+          count++;
+          savek = k;
+          savel = l;
+        }
+      }
+    }
+
+    if (count == 1)
+    {
+      if (savek == rowNumber && savel == colNumber)
+      {
+        {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  private static bool CanFitInAnotherPlaceIn(int[,] array, int missingValue, List<string> missingZerosPositions,
+    int rowNumberOriginal, int colNumberOriginal, int initNeighborRowNumber, int initNeighborColNumber,
+    bool lookingInNeighbors = false)
+  {
+    foreach (var item in missingZerosPositions)
+    {
+      var location = item.Split(',').ToArray();
+      var rowNumber = int.Parse(location[0]) + initNeighborRowNumber;
+      var colNumber = int.Parse(location[1]) + initNeighborColNumber;
+
+      var row = array.GetRow(rowNumber);
+      var col = array.GetColumn(colNumber);
+
+      var initNeighborRowNumber2 = GetInitNumberForNeighbor(rowNumber);
+      var initNeighborColNumber2 = GetInitNumberForNeighbor(colNumber);
+      var neighbors = array.GetNeighbors(initNeighborRowNumber2, initNeighborColNumber2);
+
+      if (lookingInNeighbors)
+      {
+        if ((colNumber != colNumberOriginal || rowNumber != rowNumberOriginal)
+            && !row.Contains(missingValue)
+            && !col.Contains(missingValue))
+          return true;
+
+      }
+      else
+      {
+        if (rowNumber != rowNumberOriginal && !row.Contains(missingValue) && !neighbors.Flat().Contains(missingValue))
+          return true;
+
+        if (colNumber != colNumberOriginal && !col.Contains(missingValue) && !neighbors.Flat().Contains(missingValue))
+          return true;
+
+      }
+    }
+
+    return false;
+  }
+
+  private static List<string> GetMissingZerosPositions(int[,] neighbors)
+  {
+    var ret = new List<string>();
+    for (int i = 0; i < neighbors.GetLength(0); i++)
+    {
+      for (int j = 0; j < neighbors.GetLength(1); j++)
+      {
+        if (neighbors[i, j] == 0)
+          ret.Add(i + "," + j);
+      }
+    }
+
+    return ret;
+  }
+
+  private static List<string> GetMissingZerosPositions(int[] array, int rowNumber, int colNumber, bool fixRow)
+  {
+    var ret = new List<string>();
+    for (var i = 0; i < array.Length; i++)
+    {
+      if (array[i] == 0)
+      {
+        if (fixRow)
+          ret.Add(rowNumber + "," + i);
+        else
+          ret.Add(i + "," + colNumber);
+      }
+    }
+
+    return ret;
+  }
+
+  private static int GetInitNumberForNeighbor(int original)
+  {
+    var initNumber = 0;
+    if (original >= 3) initNumber = 3;
+    if (original >= 6) initNumber = 6;
+
+    return initNumber;
+  }
+
+  #endregion
+
+  #region Techniques
+
+  private static void BlockInteraction(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
   {
     for (var i = 0; i < 9; i = i + 3)
     {
@@ -308,7 +459,7 @@ class Solution
         {
           //for each row:
           var valuesMissingThisInThisNeighborRow =
-            GetMissingInNeighborByRow(_candidatesDictionary, initNeighborRowNumber + k, initNeighborColNumber);
+            GetMissingInNeighborByRow(candidatesDictionary, initNeighborRowNumber + k, initNeighborColNumber);
 
           var unionRows = new List<int>();
           foreach (var item in valuesMissingThisInThisNeighborRow)
@@ -320,7 +471,7 @@ class Solution
 
           //for each col:
           var valuesMissingThisInThisNeighborCol =
-            GetMissingInNeighborByCol(_candidatesDictionary, initNeighborRowNumber, initNeighborColNumber + k);
+            GetMissingInNeighborByCol(candidatesDictionary, initNeighborRowNumber, initNeighborColNumber + k);
           var unionCols = new List<int>();
           foreach (var item in valuesMissingThisInThisNeighborCol)
           {
@@ -359,20 +510,20 @@ class Solution
               {
                 if ((k < initNeighborColNumber || k > initNeighborColNumber + 2)
                     && array[correctedRow, k] == 0
-                    && _candidatesDictionary[correctedRow][k].Count > 0)
+                    && candidatesDictionary[correctedRow][k].Count > 0)
                 {
                   foreach (var toRemove in thisValuesMustBeInThisRow)
                   {
-                    if (_candidatesDictionary[correctedRow][k].Contains(toRemove))
+                    if (candidatesDictionary[correctedRow][k].Contains(toRemove))
                     {
 #if DEBUG
-                      if (checkSol && _helperDictionarySolution[correctedRow][k] == toRemove)
+                      if (checkSol && _candidatesDictionarySolution[correctedRow][k] == toRemove)
                       {
                         //shouldnt be removed
                       }
 #endif
                       var cellAdreesRow = correctedRow.ToString() + " - " + k + " - Not=> " + toRemove;
-                      _candidatesDictionary[correctedRow][k].Remove(toRemove);
+                      candidatesDictionary[correctedRow][k].Remove(toRemove);
                     }
                   }
                 }
@@ -388,8 +539,8 @@ class Solution
             for (int k = 0; k < 9; k++)
             {
               if (k < initNeighborColNumber || k > initNeighborColNumber + 2)
-                if (_candidatesDictionary[correctedRow][k].Count > 0)
-                  list.Add(_candidatesDictionary[correctedRow][k]);
+                if (candidatesDictionary[correctedRow][k].Count > 0)
+                  list.Add(candidatesDictionary[correctedRow][k]);
             }
 
             var getRow = array.GetRow(correctedRow);
@@ -427,21 +578,21 @@ class Solution
                 {
                   if (l != correctedRow
                       && array[l, k] == 0
-                      && _candidatesDictionary[l][k].Count > 0)
+                      && candidatesDictionary[l][k].Count > 0)
                   {
                     foreach (var toRemove in valuesMissingInOtherCols)
                     {
-                      if (_candidatesDictionary[l][k].Contains(toRemove))
+                      if (candidatesDictionary[l][k].Contains(toRemove))
                       {
 #if DEBUG
-                        if (checkSol && _helperDictionarySolution[l][k] == toRemove)
+                        if (checkSol && _candidatesDictionarySolution[l][k] == toRemove)
                         {
                           //shouldnt be removed
                         }
 
                         var x = l + " - " + k.ToString() + " - Not=> " + toRemove;
 #endif
-                        _candidatesDictionary[l][k].Remove(toRemove);
+                        candidatesDictionary[l][k].Remove(toRemove);
                       }
                     }
                   }
@@ -485,19 +636,19 @@ class Solution
               {
                 if ((k < initNeighborRowNumber || k > initNeighborRowNumber + 2)
                     && array[k, correctedCol] == 0
-                    && _candidatesDictionary[k][correctedCol].Count > 0)
+                    && candidatesDictionary[k][correctedCol].Count > 0)
                 {
                   foreach (var toRemove in thisValuesMustBeInThisCol)
                   {
-                    if (_candidatesDictionary[k][correctedCol].Contains(toRemove))
+                    if (candidatesDictionary[k][correctedCol].Contains(toRemove))
                     {
 #if DEBUG
-                      if (checkSol && _helperDictionarySolution[k][correctedCol] == toRemove)
+                      if (checkSol && _candidatesDictionarySolution[k][correctedCol] == toRemove)
                       {
                         //shouldnt be removed
                       }
 #endif
-                      _candidatesDictionary[k][correctedCol].Remove(toRemove);
+                      candidatesDictionary[k][correctedCol].Remove(toRemove);
                     }
                   }
                 }
@@ -513,8 +664,8 @@ class Solution
             for (int k = 0; k < 9; k++)
             {
               if (k < initNeighborRowNumber || k > initNeighborRowNumber + 2)
-                if (_candidatesDictionary[k][correctedCol].Count > 0)
-                  list.Add(_candidatesDictionary[k][correctedCol]);
+                if (candidatesDictionary[k][correctedCol].Count > 0)
+                  list.Add(candidatesDictionary[k][correctedCol]);
             }
 
             var getcolumn = array.GetColumn(correctedCol);
@@ -551,19 +702,19 @@ class Solution
               {
                 if (k != correctedCol
                     && array[l, k] == 0
-                    && _candidatesDictionary[l][k].Count > 1)
+                    && candidatesDictionary[l][k].Count > 1)
                 {
                   foreach (var toRemove in valuesMissingInOtherRows)
                   {
-                    if (_candidatesDictionary[l][k].Contains(toRemove))
+                    if (candidatesDictionary[l][k].Contains(toRemove))
                     {
 #if DEBUG
-                      if (checkSol && _helperDictionarySolution[l][k] == toRemove)
+                      if (checkSol && _candidatesDictionarySolution[l][k] == toRemove)
                       {
                         //shouldnt be removed
                       }
 #endif
-                      _candidatesDictionary[l][k].Remove(toRemove);
+                      candidatesDictionary[l][k].Remove(toRemove);
                     }
                   }
                 }
@@ -585,13 +736,13 @@ class Solution
     }
   }
 
-  private static void NakedSubSets(int count)
+  private static void NakedSubSets(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
   {
     for (var i = 0; i < 9; i++)
     {
-      var col = GetCol(_candidatesDictionary, i);
-      var row = GetRow(_candidatesDictionary, i);
-      var box = GetBox(_candidatesDictionary, i);
+      var col = GetCol(candidatesDictionary, i);
+      var row = GetRow(candidatesDictionary, i);
+      var box = GetBox(candidatesDictionary, i);
 
       #region  Naked Pair
 
@@ -615,13 +766,13 @@ class Solution
       {
         for (var j = 0; j < 9; j++)
         {
-          var list = _candidatesDictionary[j][i];
+          var list = candidatesDictionary[j][i];
           foreach (var item in listToRemove)
           {
             if (list.Except(item).Any())
             {
 #if DEBUG
-              if (checkSol && item.Contains(_helperDictionarySolution[j][i]))
+              if (checkSol && item.Contains(_candidatesDictionarySolution[j][i]))
               {
                 //shouldnt be removed
               }
@@ -636,9 +787,9 @@ class Solution
 
       #region Rows
 
-      col = GetCol(_candidatesDictionary, i);
-      row = GetRow(_candidatesDictionary, i);
-      box = GetBox(_candidatesDictionary, i);
+      col = GetCol(candidatesDictionary, i);
+      row = GetRow(candidatesDictionary, i);
+      box = GetBox(candidatesDictionary, i);
       var listToRemove2 = new List<List<int>>();
       foreach (var expr in row)
       {
@@ -657,13 +808,13 @@ class Solution
       {
         for (var j = 0; j < 9; j++)
         {
-          var list = _candidatesDictionary[i][j];
+          var list = candidatesDictionary[i][j];
           foreach (var item in listToRemove2)
           {
             if (list.Except(item).Any())
             {
 #if DEBUG
-              if (checkSol && item.Contains(_helperDictionarySolution[i][j]))
+              if (checkSol && item.Contains(_candidatesDictionarySolution[i][j]))
               {
                 //shouldnt be removed
               }
@@ -678,9 +829,9 @@ class Solution
 
       #region Box
 
-      col = GetCol(_candidatesDictionary, i);
-      row = GetRow(_candidatesDictionary, i);
-      box = GetBox(_candidatesDictionary, i);
+      col = GetCol(candidatesDictionary, i);
+      row = GetRow(candidatesDictionary, i);
+      box = GetBox(candidatesDictionary, i);
       var listToRemoveBox = new List<List<int>>();
       foreach (var expr in box)
       {
@@ -701,13 +852,13 @@ class Solution
         {
           for (var bj = GetBoxCol(i); bj < 3; bj++)
           {
-            var list = _candidatesDictionary[bi][bj];
+            var list = candidatesDictionary[bi][bj];
             foreach (var item in listToRemoveBox)
             {
               if (list.Except(item).Any())
               {
 #if DEBUG
-                if (checkSol && item.Contains(_helperDictionarySolution[bi][bj]))
+                if (checkSol && item.Contains(_candidatesDictionarySolution[bi][bj]))
                 {
                   //shouldnt be removed
                 }
@@ -727,9 +878,9 @@ class Solution
 
       #region Cols
 
-      col = GetCol(_candidatesDictionary, i);
-      row = GetRow(_candidatesDictionary, i);
-      box = GetBox(_candidatesDictionary, i);
+      col = GetCol(candidatesDictionary, i);
+      row = GetRow(candidatesDictionary, i);
+      box = GetBox(candidatesDictionary, i);
 
       var countCol = new Dictionary<int, int>();
       foreach (var item in col)
@@ -755,16 +906,16 @@ class Solution
         {
           for (var j = 0; j < 9; j++)
           {
-            var cleaned = _candidatesDictionary[j][i].Intersect(listCols).ToList();
+            var cleaned = candidatesDictionary[j][i].Intersect(listCols).ToList();
             if (cleaned.Count() == listCols.Count())
             {
 #if DEBUG
-              if (checkSol && !cleaned.Contains(_helperDictionarySolution[j][i]))
+              if (checkSol && !cleaned.Contains(_candidatesDictionarySolution[j][i]))
               {
                 //shouldnt be removed
               }
 #endif
-              _candidatesDictionary[j][i] = cleaned;
+              candidatesDictionary[j][i] = cleaned;
             }
           }
         }
@@ -781,16 +932,16 @@ class Solution
         {
           for (var j = 0; j < 9; j++)
           {
-            var cleaned = _candidatesDictionary[j][i].Intersect(listCols).ToList();
+            var cleaned = candidatesDictionary[j][i].Intersect(listCols).ToList();
             if (cleaned.Count() == listCols.Count())
             {
 #if DEBUG
-              if (checkSol && !cleaned.Contains(_helperDictionarySolution[j][i]))
+              if (checkSol && !cleaned.Contains(_candidatesDictionarySolution[j][i]))
               {
                 //shouldnt be removed
               }
 #endif
-              _candidatesDictionary[j][i] = cleaned;
+              candidatesDictionary[j][i] = cleaned;
             }
           }
         }
@@ -803,9 +954,9 @@ class Solution
 
       #region Rows
 
-      col = GetCol(_candidatesDictionary, i);
-      row = GetRow(_candidatesDictionary, i);
-      box = GetBox(_candidatesDictionary, i);
+      col = GetCol(candidatesDictionary, i);
+      row = GetRow(candidatesDictionary, i);
+      box = GetBox(candidatesDictionary, i);
 
       var countRows = new Dictionary<int, int>();
       foreach (var item in row)
@@ -831,16 +982,16 @@ class Solution
         {
           for (var j = 0; j < 9; j++)
           {
-            var cleaned = _candidatesDictionary[i][j].Intersect(listRows).ToList();
+            var cleaned = candidatesDictionary[i][j].Intersect(listRows).ToList();
             if (cleaned.Count() == listRows.Count())
             {
 #if DEBUG
-              if (checkSol && !cleaned.Contains(_helperDictionarySolution[i][j]))
+              if (checkSol && !cleaned.Contains(_candidatesDictionarySolution[i][j]))
               {
                 //shouldnt be removed
               }
 #endif
-              _candidatesDictionary[i][j] = cleaned;
+              candidatesDictionary[i][j] = cleaned;
             }
           }
         }
@@ -857,18 +1008,18 @@ class Solution
         {
           for (var j = 0; j < 9; j++)
           {
-            var cleaned = _candidatesDictionary[i][j].Intersect(listRows).ToList();
+            var cleaned = candidatesDictionary[i][j].Intersect(listRows).ToList();
             if (cleaned.Count() == listRows.Count())
             {
 
 #if DEBUG
-              if (checkSol && !cleaned.Contains(_helperDictionarySolution[i][j]))
+              if (checkSol && !cleaned.Contains(_candidatesDictionarySolution[i][j]))
               {
                 //shouldnt be removed
               }
 #endif
 
-              _candidatesDictionary[i][j] = cleaned;
+              candidatesDictionary[i][j] = cleaned;
             }
           }
         }
@@ -882,7 +1033,7 @@ class Solution
     }
   }
 
-  private static void XWing(int[,] array)
+  private static void XWing(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
   {
     for (var i = 0; i < 9; i++)
     {
@@ -890,70 +1041,83 @@ class Solution
       {
         if (array[i, j] == 0)
         {
-          foreach (var candidate in _candidatesDictionary[i][j])
+          foreach (var candidate in candidatesDictionary[i][j])
           {
             for (var h = i + 1; h < 9; h++)
             {
-              if (_candidatesDictionary[h][j].Contains(candidate))
+              if (candidatesDictionary[h][j].Contains(candidate))
               {
                 for (var l = j + 1; l < 9; l++)
                 {
-                  if (_candidatesDictionary[i][l].Contains(candidate))
+                  if (candidatesDictionary[i][l].Contains(candidate))
                   {
-                    if (_candidatesDictionary[h][l].Contains(candidate))
+                    if (candidatesDictionary[h][l].Contains(candidate))
                     {
-                      var row1 = GetRow(_candidatesDictionary, i).Count(x => x.Contains(candidate));
-                      var row2 = GetRow(_candidatesDictionary, h).Count(x => x.Contains(candidate));
+                      var row1 = GetRow(candidatesDictionary, i).Count(x => x.Contains(candidate));
+                      var row2 = GetRow(candidatesDictionary, h).Count(x => x.Contains(candidate));
                       if (row1 == 2 && row2 == 2)
                       {
                         for (int k = 0; k < 9; k++)
                         {
                           if (k != i && k != h)
                           {
-                            if (_candidatesDictionary[k][j].Contains(candidate))
-                              _candidatesDictionary[k][j].Remove(candidate);
+                            if (candidatesDictionary[k][j].Contains(candidate))
+                            {
+#if DEBUG
+                              if (checkSol && _candidatesDictionarySolution[k][j] == candidate)
+                              {
+                                //shouldnt be removed
+                              }
+#endif
+                              candidatesDictionary[k][j].Remove(candidate);
+                            }
 
-                            if (_candidatesDictionary[k][l].Contains(candidate))
-                              _candidatesDictionary[k][l].Remove(candidate);
+                            if (candidatesDictionary[k][l].Contains(candidate))
+                            {
+#if DEBUG
+                              if (checkSol && _candidatesDictionarySolution[k][l] == candidate)
+                              {
+                                //shouldnt be removed
+                              }
+#endif
+
+                              candidatesDictionary[k][l].Remove(candidate);
+                            }
                           }
-
                         }
                       }
 
-
-                      var col1 = GetCol(_candidatesDictionary, j).Count(x => x.Contains(candidate));
-                      var col2 = GetCol(_candidatesDictionary, l).Count(x => x.Contains(candidate));
+                      var col1 = GetCol(candidatesDictionary, j).Count(x => x.Contains(candidate));
+                      var col2 = GetCol(candidatesDictionary, l).Count(x => x.Contains(candidate));
                       if (col1 == 2 && col2 == 2)
                       {
                         for (int k = 0; k < 9; k++)
                         {
                           if (k != j && k != l)
                           {
-
-                            if (_candidatesDictionary[i][k].Contains(candidate))
+                            if (candidatesDictionary[i][k].Contains(candidate))
                             {
 #if DEBUG
-                              if (checkSol && _helperDictionarySolution[i][k] == candidate)
+                              if (checkSol && _candidatesDictionarySolution[i][k] == candidate)
                               {
                                 //shouldnt be removed
                               }
 #endif
 
-                              _candidatesDictionary[i][k].Remove(candidate);
+                              candidatesDictionary[i][k].Remove(candidate);
                             }
 
-                            if (_candidatesDictionary[h][k].Contains(candidate))
+                            if (candidatesDictionary[h][k].Contains(candidate))
                             {
 #if DEBUG
-                              if (checkSol && _helperDictionarySolution[h][k] == candidate)
+                              if (checkSol && _candidatesDictionarySolution[h][k] == candidate)
                               {
                                 //shouldnt be removed
                               }
 #endif
-                              _candidatesDictionary[h][k].Remove(candidate);
+                              candidatesDictionary[h][k].Remove(candidate);
                             }
                           }
-
                         }
                       }
                     }
@@ -965,214 +1129,44 @@ class Solution
         }
       }
     }
-
-  }
-
-
-  private static List<List<int>> GetMissingInNeighborByRow(Dictionary<int, Dictionary<int, List<int>>> helperDictionary,
-      int row, int col)
-  {
-    return GetMissingInNeighborByDim(helperDictionary, row, col, true);
-  }
-
-  private static List<List<int>> GetMissingInNeighborByCol(Dictionary<int, Dictionary<int, List<int>>> helperDictionary,
-    int row, int col)
-  {
-    return GetMissingInNeighborByDim(helperDictionary, row, col, false);
-  }
-
-  private static List<List<int>> GetMissingInNeighborByDim(Dictionary<int, Dictionary<int, List<int>>> helperDictionary,
-    int row, int col, bool byRow)
-  {
-    var ret = new List<List<int>>();
-    var dim = byRow ? col : row;
-    for (var i = dim; i < dim + 3; i++)
-    {
-      if (byRow)
-      {
-        var list = _candidatesDictionary[row][i];
-        if (list.Count > 0)
-          ret.Add(list);
-      }
-      else
-      {
-        var list = _candidatesDictionary[i][col];
-        if (list.Count > 0)
-          ret.Add(list);
-      }
-    }
-
-    return ret;
-  }
-
-
-  private static Dictionary<int, Dictionary<int, List<int>>> _candidatesDictionary;
-
-  private static void FillDictionary(int[,] array)
-  {
-    _candidatesDictionary = new Dictionary<int, Dictionary<int, List<int>>>();
-    for (var i = 0; i < 9; i++)
-    {
-      _candidatesDictionary.Add(i, new Dictionary<int, List<int>>());
-      for (var j = 0; j < 9; j++)
-      {
-        _candidatesDictionary[i].Add(j, new List<int>(Extensions.PossibleValues));
-      }
-    }
   }
 
   #endregion
 
-  private static bool CanFitInAnotherPlaceInBox(int rowNumber, int colNumber, int initNeighborRowNumber, int initNeighborColNumber,
-    int missingValue)
-  {
-    var count = 0;
-    var savek = 0;
-    var savel = 0;
-    for (var k = initNeighborRowNumber; k < initNeighborRowNumber + 3; k++)
-    {
-      for (int l = initNeighborColNumber; l < +initNeighborColNumber + 3; l++)
-      {
-        if ((_candidatesDictionary[k][l]).Contains(missingValue))
-        {
-          count++;
-          savek = k;
-          savel = l;
-        }
-      }
-    }
-
-    if (count == 1)
-    {
-      if (savek == rowNumber && savel == colNumber)
-      {
-        {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  }
-
-  private static bool CanFitInAnotherPlaceIn(int[,] array, int missingValue, List<string> missingZerosPositions,
-    int rowNumberOriginal, int colNumberOriginal, int initNeighborRowNumber, int initNeighborColNumber,
-    bool lookingInNeighbors = false)
-  {
-    var ret = false;
-    foreach (var item in missingZerosPositions)
-    {
-      var location = item.Split(',').ToArray();
-      var rowNumber = int.Parse(location[0]) + initNeighborRowNumber;
-      var colNumber = int.Parse(location[1]) + initNeighborColNumber;
-
-      var row = array.GetRow(rowNumber);
-      var col = array.GetColumn(colNumber);
-
-      var initNeighborRowNumber2 = GetInitNumberForNeighbor(rowNumber);
-      var initNeighborColNumber2 = GetInitNumberForNeighbor(colNumber);
-      var neighbors = array.GetNeighbors(initNeighborRowNumber2, initNeighborColNumber2);
-
-      if (lookingInNeighbors)
-      {
-        if ((colNumber != colNumberOriginal || rowNumber != rowNumberOriginal)
-            && !row.Contains(missingValue)
-            && !col.Contains(missingValue))
-          return true;
-
-      }
-      else
-      {
-        if (rowNumber != rowNumberOriginal && !row.Contains(missingValue) && !neighbors.Flat().Contains(missingValue))
-          return true;
-
-        if (colNumber != colNumberOriginal && !col.Contains(missingValue) && !neighbors.Flat().Contains(missingValue))
-          return true;
-
-      }
-    }
-
-    return false;
-  }
-
-  private static List<string> GetMissingZerosPositions(int[,] neighbors, int initNeighborRowNumber,
-    int initNeighborColNumber)
-  {
-    var ret = new List<string>();
-    for (int i = 0; i < neighbors.GetLength(0); i++)
-    {
-      for (int j = 0; j < neighbors.GetLength(1); j++)
-      {
-        if (neighbors[i, j] == 0)
-          ret.Add(i + "," + j);
-      }
-    }
-
-    return ret;
-  }
-
-  private static List<string> GetMissingZerosPositions(int[] array, int rowNumber, int colNumber, bool fixRow)
-  {
-    var ret = new List<string>();
-    for (var i = 0; i < array.Length; i++)
-    {
-      if (array[i] == 0)
-      {
-        if (fixRow)
-          ret.Add(rowNumber + "," + i);
-        else
-          ret.Add(i + "," + colNumber);
-      }
-    }
-
-    return ret;
-  }
-
-  private static int GetInitNumberForNeighbor(int original)
-  {
-    var initNumber = 0;
-    if (original >= 3) initNumber = 3;
-    if (original >= 6) initNumber = 6;
-
-    return initNumber;
-  }
-
-  private static int GetValueTo(int[,] array, int rowNumber, int colNumber)
+  private static int GetValueTo(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int rowNumber, int colNumber)
   {
 
-    var values = _candidatesDictionary[rowNumber][colNumber];
+    var values = candidatesDictionary[rowNumber][colNumber];
     if (values.Count == 1)
       return values.First();
 
     var row = array.GetRow(rowNumber);
-    var rowCandidates = GetRow(_candidatesDictionary, rowNumber);
+    var rowCandidates = GetRow(candidatesDictionary, rowNumber);
     var missingInRow = row.GetMissing();
     if (missingInRow.Length == 1)
       return missingInRow[0];
 
     var col = array.GetColumn(colNumber);
-    var colCandidates = GetCol(_candidatesDictionary, rowNumber);
+    var colCandidates = GetCol(candidatesDictionary, rowNumber);
     var missingInCol = col.GetMissing();
     if (missingInCol.Length == 1)
       return missingInCol[0];
 
     var initNeighborRowNumber = GetInitNumberForNeighbor(rowNumber);
     var initNeighborColNumber = GetInitNumberForNeighbor(colNumber);
-    var boxCandidates = GetBox(_candidatesDictionary, GetBoxBy(rowNumber, colNumber), true);
+    var boxCandidates = GetBox(candidatesDictionary, GetBoxBy(rowNumber, colNumber), true);
     var neighbors = array.GetNeighbors(initNeighborRowNumber, initNeighborColNumber);
     var missingInNei = neighbors.GetMissing();
     if (missingInNei.Length == 1)
       return missingInNei[0];
 
-    //rowNumber== 7 && colNumber==0
     var missingValues = missingInNei.Intersect(missingInCol).Intersect(missingInRow).ToList();
     if (missingValues.Count == 1)
       return missingValues.FirstOrDefault();
 
     foreach (var missingValue in missingValues)
     {
-      var missingZerosPositionsInNei =
-        GetMissingZerosPositions(neighbors, initNeighborRowNumber, initNeighborColNumber);
+      var missingZerosPositionsInNei = GetMissingZerosPositions(neighbors);
       if (!CanFitInAnotherPlaceIn(array, missingValue, missingZerosPositionsInNei, rowNumber, colNumber,
         initNeighborRowNumber, initNeighborColNumber, true))
       {
@@ -1191,7 +1185,7 @@ class Solution
         return missingValue;
       }
 
-      if (!CanFitInAnotherPlaceInBox(rowNumber, colNumber, initNeighborRowNumber, initNeighborColNumber, missingValue))
+      if (!CanFitInAnotherPlaceInBox(rowNumber, colNumber, initNeighborRowNumber, initNeighborColNumber, missingValue, candidatesDictionary))
       {
         return missingValue;
       }
@@ -1248,8 +1242,8 @@ class Solution
   public static int[,] Solve(int[,] array)
   {
     var count = 0;
-    FillDictionary(array);
-    UpdateDictionary(array);
+    var candidatesDictionary = GetAndFillDictionary(array);
+    UpdateDictionary(array, candidatesDictionary);
 
     while (!Verify(array))
     {
@@ -1260,58 +1254,55 @@ class Solution
         {
           if (array[i, j] == 0)
           {
-            var ijValue = GetValueTo(array, i, j);
+            var ijValue = GetValueTo(array, candidatesDictionary, i, j);
             if (ijValue != -1)
               array[i, j] = ijValue;
           }
         }
       }
 
-      UpdateDictionary(array);
+      UpdateDictionary(array, candidatesDictionary);
       if (count > 5)
       {
-        BlockInteraction(array);
-        NakedSubSets(count);
-        XWing(array);
+        BlockInteraction(array, candidatesDictionary);
+        NakedSubSets(array, candidatesDictionary);
+        XWing(array, candidatesDictionary);
+
+        if (count > 50)
+        {
+          //tryguessing??
+        }
       }
 
       count++;
 
+      if (count > 100)
+      {
+        //Debug
+      }
     }
 
     return array;
   }
 
-  static void Main(string[] args)
-  {
-    var sudoku = new int[9, 9];
-
-    for (int i = 0; i < 9; i++)
-    {
-      var line = Console.ReadLine();
-      for (int j = 0; j < 9; j++)
-      {
-        if (line != null)
-          sudoku[i, j] = int.Parse(line[j].ToString());
-      }
-    }
-
-    Solve(sudoku);
-
-    for (int i = 0; i < 9; i++)
-    {
-      var line = string.Empty;
-      for (int j = 0; j < 9; j++)
-      {
-        line = line + sudoku[i, j];
-      }
-      Console.WriteLine(line);
-    }
-
-  }
-
-
 #if DEBUG
+
+  private static Dictionary<int, Dictionary<int, int>> _candidatesDictionarySolution;
+  private static bool checkSol = false;
+  //private static bool checkSol = true;
+
+  private static void LoadSolution(string sol)
+  {
+    _candidatesDictionarySolution = new Dictionary<int, Dictionary<int, int>>();
+    for (int i = 0; i < 9; i++)
+    {
+      _candidatesDictionarySolution.Add(i, new Dictionary<int, int>());
+      for (int j = 0; j < 9; j++)
+      {
+        _candidatesDictionarySolution[i].Add(j, int.Parse(sol[i * 9 + j].ToString()));
+      }
+    }
+  }
 
   public static void SolveTestCases()
   {
@@ -1370,12 +1361,27 @@ class Solution
 
     //Not included
     "105000370000000200097300010000053102300801004201470000070008640008000000012000807", //125649378834715296697382415746953182359821764281476953573298641468137529912564837
+    "703108459900060800000000000010290367075003008000701000002070015086350020000010000",
+    "000060005624000010001000300008004037009100500007500090082470000090310000000029053",
+    "806000052090740000072658034000200063903160007000000000000500600410000325507000008",
+    "100843000008027031600000000004300100537900080010004305490030070300100000000405010",
+    "380000000000400785009020300060090000800302009000040070001070500495006000000000092",
+    "027000800001000700000400000300000080050000009070028000090067000580000030000040056",
+    "000059020090740000406001908017020500800005702000003041580600000934000280061002000",
+    "907501820035020010018006003000000209090652001102049500386400000750210600400000080",
+    "700004001020060080001500200800090700050307020006050008008009100090010060500800003",
+    "000815400105000030000004001019000080060400000208790000001000043800000297006002000",
+    "040000000806000007500000100005190060004050000000300091000002436090000000000008020",
+    "009030600036014089100869035090000800010000090068090170601903002972640300003020900",
 
+    //"857912006291346758346785192124560903760000025905020601412600507670250010500070260", // Needs XY-Wing
+    //"703806090614923700980074063030000070179205630040030010801090306397060001460301907", // Needs swordfish
+    //"901063482048902061060841090406385209080120046000604800120430658630018924804206137", // Needs guessing
+    //"790000003000000060801004002005000000300100000040006209200030006030605421000000000", // Needs guessing/Coloring
   };
 
-
-    //sudokus.Clear(); sudokus.Add("000003017015009008060000000100007000009000200000500004000000020500600340340200000");
-    LoadSolution("294863517715429638863751492152947863479386251638512974986134725521678349347295186");
+    //sudokus.Clear(); sudokus.Add("857912006291346758346785192124560903760000025905020601412600507670250010500070260");
+    LoadSolution("792568143453219867861374952625893714379142685148756239284931576937685421516427398");
 
     var total = 0.0;
     var count = 1;
@@ -1384,12 +1390,48 @@ class Solution
       //LoadSolution(solutions[count - 1]);
       var solve2 = sudoku.SplitBySize(9).FilledArray();
       var sw2 = Stopwatch.StartNew();
-      Solve(solve2);
+      var solved = Solve(solve2);
       var secs2 = sw2.ElapsedMilliseconds / 1000.0;
       total = total + secs2;
-      Console.WriteLine($"Took {(count++):00}: {secs2:0.000}s");
+      Console.WriteLine($"Took {(count++):00}: {secs2:0.000}s - {solved.ToString2(0)}");
     }
     Console.WriteLine($"Total:   {total:0.000}s");
+  }
+
+#endif
+
+#if DEBUG
+  public static void Main2()
+  {
+    SolveTestCases();
+  }
+#else
+  static void Main(string[] args)
+  {
+    var sudoku = new int[9, 9];
+
+    for (int i = 0; i < 9; i++)
+    {
+      var line = Console.ReadLine();
+      for (int j = 0; j < 9; j++)
+      {
+        if (line != null)
+          sudoku[i, j] = int.Parse(line[j].ToString());
+      }
+    }
+
+    Solve(sudoku);
+
+    for (int i = 0; i < 9; i++)
+    {
+      var line = string.Empty;
+      for (int j = 0; j < 9; j++)
+      {
+        line = line + sudoku[i, j];
+      }
+      Console.WriteLine(line);
+    }
+
   }
 
 #endif
