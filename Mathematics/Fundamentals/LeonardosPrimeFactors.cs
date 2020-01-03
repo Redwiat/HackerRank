@@ -9,12 +9,18 @@ using System.Numerics;
 class Solution
 {
 
-  static Dictionary<int, bool> IsPrimeDic = new Dictionary<int, bool>() { { 0, false }, { 1, false } };
-  static List<int> Primes = new List<int>();
+  static Dictionary<long, bool> IsPrimeDic = new Dictionary<long, bool>() { { 0, false }, { 1, false }, { 2, true }, { 3, true }, { 4, false }, { 5, true }, { 6, false }, { 7, true }, { 8, false }, { 9, false }, { 10, false }, { 11, true } };
+  static readonly List<int> Primes = new List<int>() { 2, 3, 5, 7, 11 };
   static bool IsPrime(int n)
   {
     if (!IsPrimeDic.ContainsKey(n))
     {
+      if (n % 2 == 0 || n % 3 == 0 || n % 5 == 0)
+      {
+        IsPrimeDic.Add(n, false);
+        return false;
+      }
+
       var count = 2;
       while (count <= n)
       {

@@ -1398,13 +1398,6 @@ class Solution
     Console.WriteLine($"Total:   {total:0.000}s");
   }
 
-#endif
-
-#if DEBUG
-  public static void Main2()
-  {
-    SolveTestCases();
-  }
 #else
   static void Main(string[] args)
   {
