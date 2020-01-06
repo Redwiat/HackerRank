@@ -10,7 +10,7 @@ class Solution
 {
   static SortedDictionary<int, long> Total = new SortedDictionary<int, long>();
   static Dictionary<int, bool> IsPrimeDic = new Dictionary<int, bool>() { { 0, false }, { 1, false }, { 2, true }, { 3, true }, { 4, false }, { 5, true }, { 6, false }, { 7, true }, { 8, false }, { 9, false }, { 10, false }, { 11, true } };
-  static readonly List<int> Primes = new List<int>() { 2, 3, 5, 7, 11 };
+  //static readonly List<int> Primes = new List<int>() { 2, 3, 5, 7, 11 };
   static bool IsPrime(int n)
   {
     if (!IsPrimeDic.ContainsKey(n))
@@ -33,7 +33,7 @@ class Solution
         count += 2;
       }
 
-      Primes.Add(n);
+      //Primes.Add(n);
       IsPrimeDic.Add(n, true);
       return true;
     }
@@ -60,11 +60,10 @@ class Solution
     for (int i = init; i <= n; i++)
     {
       if (IsPrime(i))
-      {
         total += i;
-        if (!Total.ContainsKey(i))
-          Total.Add(i, total);
-      }
+
+      if (!Total.ContainsKey(i))
+        Total.Add(i, total);
     }
 
     return total;
