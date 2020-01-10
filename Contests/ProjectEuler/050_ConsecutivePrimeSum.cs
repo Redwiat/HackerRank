@@ -1,4 +1,8 @@
-﻿using System;
+//
+//NOT FINISHED YET: 60/100
+//
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
