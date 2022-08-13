@@ -1,4 +1,6 @@
-#if false
+//#define Test
+
+#if Test
 using System.Diagnostics;
 using System.Text;
 #endif
@@ -29,8 +31,11 @@ public static class Extensions
         return result;
     }
 
-    public static int[,] GetNeighbors(this int[,] matrix, int initNeighborRowNumber, int initNeighborColNumber)
+    public static int[,] staticarray = new int[3, 3];
+    public static int[,] GetNeighbors(this int[,] matrix, int rowNumber, int colNumber)
     {
+        var initNeighborRowNumber = GetInitNumberForNeighbor(rowNumber);
+        var initNeighborColNumber = GetInitNumberForNeighbor(colNumber);
         var neighbors = new int[3, 3];
 
         for (int i = 0; i < 3; i++)
@@ -44,6 +49,12 @@ public static class Extensions
         return neighbors;
     }
 
+    public static int GetInitNumberForNeighbor(this int original)
+    {
+        if (original >= 6) return 6;
+        if (original >= 3) return 3;
+        return 0;
+    }
 
     public static readonly int[] PossibleValues = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     public static int[] GetMissing(this int[] array)
@@ -64,7 +75,24 @@ public static class Extensions
         return GetMissing(array.Flat());
     }
 
-    public static int[] Flat(this int[,] array) => array.Cast<int>().ToArray();
+    public static int[] Flat2(this int[,] array)
+    {
+        return array.Cast<int>().ToArray();
+    }
+    public static int[] Flat(this int[,] array)
+    {
+        var result=new int[9];
+        var index = 0;
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                result[index] = array[i,j];
+                index++;
+            }
+        }
+        return result;
+    }
 
     public static int[,] Copy(this int[,] source)
     {
@@ -80,7 +108,7 @@ public static class Extensions
 
     #region Debug
 
-#if false
+#if Test
 
     public static string[] SplitBySize(this string str, int chunkSize)
     {
@@ -191,8 +219,8 @@ class Solution
                 candidatesDictionary[k][j].Remove(number);
 
             //Remove number from the neighbors
-            var initNeighborRowNumber = GetInitNumberForNeighbor(i);
-            var initNeighborColNumber = GetInitNumberForNeighbor(j);
+            var initNeighborRowNumber = i.GetInitNumberForNeighbor();
+            var initNeighborColNumber = j.GetInitNumberForNeighbor();
             for (var k = initNeighborRowNumber; k < initNeighborRowNumber + 3; k++)
             {
                 for (int l = initNeighborColNumber; l < initNeighborColNumber + 3; l++)
@@ -262,9 +290,7 @@ class Solution
             var row = array.GetRow(rowNumber);
             var col = array.GetCol(colNumber);
 
-            var initNeighborRowNumber2 = GetInitNumberForNeighbor(rowNumber);
-            var initNeighborColNumber2 = GetInitNumberForNeighbor(colNumber);
-            var neighbors = array.GetNeighbors(initNeighborRowNumber2, initNeighborColNumber2);
+            var neighbors = array.GetNeighbors(rowNumber, colNumber);
 
             if (lookingInNeighbors)
             {
@@ -320,22 +346,39 @@ class Solution
         return ret;
     }
 
-    private static int GetInitNumberForNeighbor(int original)
-    {
-        var initNumber = 0;
-        if (original >= 3) initNumber = 3;
-        if (original >= 6) initNumber = 6;
-
-        return initNumber;
-    }
 
 
     #endregion
 
-    private static int GetValueTo(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int rowNumber, int colNumber)
+    private static int[] GetPossibilities2(int[,] array, int rowNumber, int colNumber)
     {
-        var values = candidatesDictionary[rowNumber][colNumber];
-        if (values.Count == 1)
+        var list = Extensions.PossibleValues.ToList();
+        var row = array.GetRow(rowNumber);
+        var col = array.GetCol(colNumber);
+        var neighbors = array.GetNeighbors(rowNumber, colNumber).Flat();
+        list.RemoveAll(x => row.Contains(x));
+        list.RemoveAll(x => col.Contains(x));
+        list.RemoveAll(x => neighbors.Contains(x));
+
+        return list.ToArray();
+    }
+    private static int[] GetPossibilities(int[,] array, int rowNumber, int colNumber)
+    {
+        var list = Extensions.PossibleValues.ToList();
+
+        for (int i = 0; i < 9; i++)
+        {
+            list.Remove(array[rowNumber, i]);
+            list.Remove(array[i, colNumber]);
+        }
+
+        return list.ToArray();
+    }
+
+    private static int GetValueTo(int[,] array, int rowNumber, int colNumber)
+    {
+        var values = GetPossibilities(array, rowNumber, colNumber);
+        if (values.Length == 1)
             return values.First();
 
         var row = array.GetRow(rowNumber);
@@ -350,10 +393,8 @@ class Solution
         if (missingInCol.Length == 1)
             return missingInCol[0];
 
-        var initNeighborRowNumber = GetInitNumberForNeighbor(rowNumber);
-        var initNeighborColNumber = GetInitNumberForNeighbor(colNumber);
         //var boxCandidates = GetBox(candidatesDictionary, GetBoxBy(rowNumber, colNumber), true);
-        var neighbors = array.GetNeighbors(initNeighborRowNumber, initNeighborColNumber);
+        var neighbors = array.GetNeighbors(rowNumber, colNumber);
         var missingInNei = neighbors.GetMissing();
         if (missingInNei.Length == 1)
             return missingInNei[0];
@@ -364,6 +405,8 @@ class Solution
 
         foreach (var missingValue in missingValues)
         {
+            var initNeighborRowNumber = rowNumber.GetInitNumberForNeighbor();
+            var initNeighborColNumber = colNumber.GetInitNumberForNeighbor();
             var missingZerosPositionsInNei = GetMissingZerosPositions(neighbors);
             if (!CanFitInAnotherPlaceIn(array, missingValue, missingZerosPositionsInNei, rowNumber, colNumber,
               initNeighborRowNumber, initNeighborColNumber, true))
@@ -383,10 +426,10 @@ class Solution
                 return missingValue;
             }
 
-            if (!CanFitInAnotherPlaceInBox(rowNumber, colNumber, initNeighborRowNumber, initNeighborColNumber, missingValue, candidatesDictionary))
-            {
-                return missingValue;
-            }
+            //if (!CanFitInAnotherPlaceInBox(rowNumber, colNumber, initNeighborRowNumber, initNeighborColNumber, missingValue, candidatesDictionary))
+            //{
+            //    return missingValue;
+            //}
 
         }
 
@@ -418,8 +461,8 @@ class Solution
     public static int[,]? Solve(int[,] array, bool backtracking = false)
     {
         var count = 0;
-        var candidatesDictionary = GetAndFillDictionary();
-        UpdateDictionary(array, candidatesDictionary);
+        //var candidatesDictionary = GetAndFillDictionary();
+        //UpdateDictionary(array, candidatesDictionary);
 
         while (!Verify(array))
         {
@@ -429,11 +472,11 @@ class Solution
                 {
                     if (array[i, j] == 0)
                     {
-                        var ijValue = GetValueTo(array, candidatesDictionary, i, j);
+                        var ijValue = GetValueTo(array, i, j);
                         if (ijValue != -1)
                         {
                             array[i, j] = ijValue;
-                            UpdateDictionaryAtPos(array, candidatesDictionary, i, j);
+                            //UpdateDictionaryAtPos(array, candidatesDictionary, i, j);
                         }
                     }
                 }
@@ -449,19 +492,19 @@ class Solution
                 //NakedSubSets(array, candidatesDictionary);
                 //XWing(array, candidatesDictionary);
 
-                UseBacktrack(ref array, candidatesDictionary);
+                UseBacktrack(ref array);
             }
 
             count++;
         }
 
-#if false
+#if Test
         //Print(array);
 #endif
         return array;
     }
 
-    private static void UseBacktrack(ref int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
+    private static void UseBacktrack(ref int[,] array)
     {
         var initial = array.Copy();
 
@@ -471,7 +514,8 @@ class Solution
             {
                 if (initial[i, j] == 0)
                 {
-                    foreach (var possibility in candidatesDictionary[i][j])
+                    var possibilities = GetPossibilities(initial, i, j);
+                    foreach (var possibility in possibilities)
                     {
                         initial[i, j] = possibility;
                         var x = Solve(initial, true);
@@ -490,7 +534,7 @@ class Solution
         }
     }
 
-#if false
+#if Test
 
     public static void SolveTestCases()
     {
@@ -580,7 +624,7 @@ class Solution
                 var solve2 = sudoku.SplitBySize(9).FilledArray();
 
                 var sw2 = Stopwatch.StartNew();
-                
+
                 solve2 = Solve(solve2);
 
                 var secs2 = sw2.ElapsedMilliseconds / 1000.0;
