@@ -25,6 +25,22 @@ public static class Extensions
           .ToArray();
     }
 
+    public static int SumRow(this int[,] matrix, int rowNumber)
+    {
+        var sum = 0;
+        for (int i = 0; i < 9; i++)
+            sum += matrix[rowNumber, i];
+
+        return sum;
+    }
+    public static int SumCol(this int[,] matrix, int colNumber)
+    {
+        var sum = 0;
+        for (int i = 0; i < 9; i++)
+            sum += matrix[i, colNumber];
+        return sum;
+    }
+
     public static int[,] GetNeighbors(this int[,] matrix, int initNeighborRowNumber, int initNeighborColNumber)
     {
         var neighbors = new int[3, 3];
@@ -81,17 +97,12 @@ public static class Extensions
 
     public static int[] Flat(this int[,] array) => array.Cast<int>().ToArray();
 
-
     public static int[,] Copy(this int[,] source)
     {
         var result = new int[9, 9];
         for (int i = 0; i < 9; i++)
-        {
             for (int j = 0; j < 9; j++)
-            {
                 result[i, j] = source[i, j];
-            }
-        }
 
         return result;
     }
@@ -257,36 +268,11 @@ class Solution
         {
             for (var j = 0; j < 9; j++)
             {
-                var number = array[i, j];
-                var list = candidatesDictionary[i][j];
-                if (number != 0 && list.Count != 0)
-                {
-                    //clear this cell
-                    candidatesDictionary[i][j].Clear();
-
-                    //Remove number from all cells in this row:
-                    for (int k = 0; k < 9; k++)
-                        candidatesDictionary[i][k].Remove(number);
-
-                    //Remove number from all cells in this col:
-                    for (int k = 0; k < 9; k++)
-                        candidatesDictionary[k][j].Remove(number);
-
-                    //Remove number from the neighbors
-                    var initNeighborRowNumber = GetInitNumberForNeighbor(i);
-                    var initNeighborColNumber = GetInitNumberForNeighbor(j);
-                    for (var k = initNeighborRowNumber; k < initNeighborRowNumber + 3; k++)
-                    {
-                        for (int l = initNeighborColNumber; l < initNeighborColNumber + 3; l++)
-                        {
-                            candidatesDictionary[k][l].Remove(number);
-                        }
-                    }
-                }
+                UpdateDictionaryAtPos(array, candidatesDictionary, i, j);
             }
         }
     }
-    private static void UpdateDictionary(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int i, int j)
+    private static void UpdateDictionaryAtPos(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int i, int j)
     {
         var number = array[i, j];
         var list = candidatesDictionary[i][j];
@@ -498,26 +484,25 @@ class Solution
 
     private static int GetValueTo(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int rowNumber, int colNumber)
     {
-
         var values = candidatesDictionary[rowNumber][colNumber];
         if (values.Count == 1)
             return values.First();
 
         var row = array.GetRow(rowNumber);
-        var rowCandidates = GetRow(candidatesDictionary, rowNumber);
+        //var rowCandidates = GetRow(candidatesDictionary, rowNumber);
         var missingInRow = row.GetMissing();
         if (missingInRow.Length == 1)
             return missingInRow[0];
 
         var col = array.GetColumn(colNumber);
-        var colCandidates = GetCol(candidatesDictionary, rowNumber);
+        //var colCandidates = GetCol(candidatesDictionary, rowNumber);
         var missingInCol = col.GetMissing();
         if (missingInCol.Length == 1)
             return missingInCol[0];
 
         var initNeighborRowNumber = GetInitNumberForNeighbor(rowNumber);
         var initNeighborColNumber = GetInitNumberForNeighbor(colNumber);
-        var boxCandidates = GetBox(candidatesDictionary, GetBoxBy(rowNumber, colNumber), true);
+        //var boxCandidates = GetBox(candidatesDictionary, GetBoxBy(rowNumber, colNumber), true);
         var neighbors = array.GetNeighbors(initNeighborRowNumber, initNeighborColNumber);
         var missingInNei = neighbors.GetMissing();
         if (missingInNei.Length == 1)
@@ -560,43 +545,21 @@ class Solution
 
     private static bool Verify(int[,] array, bool exception = false)
     {
-        var totalSum = 0;
         for (var i = 0; i < 9; i++)
         {
-            var col = array.GetColumn(i);
-            var sumCol = col.Sum();
-            if (sumCol > 45 || (sumCol != 45 && !col.Contains(0)))
-            {
-                if (exception)
-                    throw new Exception("Glitch in the matrix!");
+            var sumRow = array.SumRow(i);
+            var sumCol = array.SumCol(i);
+            if (sumRow < 45 || sumCol<45)
                 return false;
-            }
-            if (sumCol < 45)
-            {
-                return false;
-            }
 
-            var row = array.GetRow(i);
-            var sumRow = row.Sum();
-            if (sumRow > 45 || (sumRow != 45 && !row.Contains(0)))
-            {
-                if (exception)
-                    throw new Exception("Glitch in the matrix!");
-                return false;
-            }
-            if (sumCol < 45)
-            {
-                return false;
-            }
+            if (sumRow == 45 && sumCol==45)
+                continue;
 
-            totalSum = totalSum + sumCol + sumRow;
-        }
+            //if (exception)
+            //    throw new Exception("Glitch in the matrix!");
 
-        if (totalSum != (45 * 9 + 45 * 9))
-        {
-            if (exception)
-                throw new Exception("Glitch in the matrix!");
             return false;
+
         }
 
         return true;
@@ -620,7 +583,7 @@ class Solution
                         if (ijValue != -1)
                         {
                             array[i, j] = ijValue;
-                            UpdateDictionary(array, candidatesDictionary, i, j);
+                            UpdateDictionaryAtPos(array, candidatesDictionary, i, j);
                         }
                     }
                 }
@@ -650,7 +613,6 @@ class Solution
 
     private static void UseBacktrack(ref int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
     {
-
         var initial = array.Copy();
 
         for (var i = 0; i < 9; i++)
@@ -774,22 +736,31 @@ class Solution
     /*67*/"790000003000000060801004002005000000300100000040006209200030006030605421000000000", // Needs guessing/Coloring
   };
 
-        var total = 0.0;
-        var count = 1;
-        foreach (var sudoku in sudokus)
+        var listTotals = new List<double>();
+        var benchmark = 100;
+        for (int i = 0; i < benchmark; i++)
         {
-            //LoadSolution(solutions[count - 1]);
-            var solve2 = sudoku.SplitBySize(9).FilledArray();
-            var sw2 = Stopwatch.StartNew();
+            var total = 0.0;
 
-            solve2 = Solve(solve2);
+            foreach (var sudoku in sudokus)
+            {
+                //LoadSolution(solutions[count - 1]);
+                var solve2 = sudoku.SplitBySize(9).FilledArray();
+                var sw2 = Stopwatch.StartNew();
+
+                solve2 = Solve(solve2);
 
 
-            var secs2 = sw2.ElapsedMilliseconds / 1000.0;
-            total = total + secs2;
-            Console.WriteLine($"Took {(count++):00}: {secs2:0.000}s - {solve2.ToString2(0)}");
+                var secs2 = sw2.ElapsedMilliseconds / 1000.0;
+                total = total + secs2;
+                //Console.WriteLine($"Took {(count++):00}: {secs2:0.000}s - {solve2.ToString2(0)}");
+            }
+
+            Console.WriteLine($"Total:   {total:0.000}s");
+            listTotals.Add(total);
         }
-        Console.WriteLine($"Total:   {total:0.000}s");
+
+        Console.WriteLine($"TotalAverage:   {listTotals.Average():0.000}s");
     }
 
     static void Main(string[] args)
