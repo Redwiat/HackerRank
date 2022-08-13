@@ -11,34 +11,22 @@ public static class Extensions
 
     #region Arrays
 
-    public static int[] GetColumn(this int[,] matrix, int colNumber)
+    public static int[] GetCol(this int[,] matrix, int colNumber)
     {
-        return Enumerable.Range(0, matrix.GetLength(0))
-          .Select(x => matrix[x, colNumber])
-          .ToArray();
+        var result = new int[9];
+        for (int i = 0; i < 9; i++)
+            result[i] = matrix[i, colNumber];
+
+        return result;
     }
 
     public static int[] GetRow(this int[,] matrix, int rowNumber)
     {
-        return Enumerable.Range(0, matrix.GetLength(1))
-          .Select(x => matrix[rowNumber, x])
-          .ToArray();
-    }
-
-    public static int SumRow(this int[,] matrix, int rowNumber)
-    {
-        var sum = 0;
+        var result = new int[9];
         for (int i = 0; i < 9; i++)
-            sum += matrix[rowNumber, i];
+            result[i] = matrix[rowNumber, i];
 
-        return sum;
-    }
-    public static int SumCol(this int[,] matrix, int colNumber)
-    {
-        var sum = 0;
-        for (int i = 0; i < 9; i++)
-            sum += matrix[i, colNumber];
-        return sum;
+        return result;
     }
 
     public static int[,] GetNeighbors(this int[,] matrix, int initNeighborRowNumber, int initNeighborColNumber)
@@ -54,25 +42,6 @@ public static class Extensions
         }
 
         return neighbors;
-    }
-
-    public static string[] SplitBySize(this string str, int chunkSize)
-    {
-        return Enumerable.Range(0, str.Length / chunkSize)
-          .Select(i => str.Substring(i * chunkSize, chunkSize)).ToArray();
-    }
-
-    public static int[,] FilledArray(this string[] splitSolve)
-    {
-        var filled = new int[9, 9];
-        for (int i = 0; i < 9; i++)
-        {
-            for (int j = 0; j < 9; j++)
-            {
-                filled[i, j] = int.Parse(splitSolve[i][j].ToString());
-            }
-        }
-        return filled;
     }
 
 
@@ -113,6 +82,25 @@ public static class Extensions
 
 #if false
 
+    public static string[] SplitBySize(this string str, int chunkSize)
+    {
+        return Enumerable.Range(0, str.Length / chunkSize)
+          .Select(i => str.Substring(i * chunkSize, chunkSize)).ToArray();
+    }
+
+    public static int[,] FilledArray(this string[] splitSolve)
+    {
+        var filled = new int[9, 9];
+        for (int i = 0; i < 9; i++)
+        {
+            for (int j = 0; j < 9; j++)
+            {
+                filled[i, j] = int.Parse(splitSolve[i][j].ToString());
+            }
+        }
+        return filled;
+    }
+
     public static string ToString2(this int[,] source, int pad = 10)
     {
         var result = "";
@@ -149,6 +137,22 @@ public static class Extensions
         return result.ToString();
     }
 
+    private static List<string> Print(this int[,] array)
+    {
+        var ret = new List<string>();
+        for (int i = 0; i < 9; i++)
+        {
+            for (int j = 0; j < 9; j++)
+            {
+                Console.Write(array[i, j] + " ");
+            }
+            Console.WriteLine();
+        }
+        Console.WriteLine();
+
+        return ret;
+    }
+
 #endif
 
     #endregion
@@ -159,109 +163,6 @@ class Solution
 {
 
     #region Helpers
-    private static List<List<int>> GetRow(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int dim)
-    {
-        return GetDim(candidatesDictionary, dim, true);
-    }
-
-    private static List<List<int>> GetCol(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int dim)
-    {
-        return GetDim(candidatesDictionary, dim, false);
-    }
-
-    private static List<List<int>> GetBox(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int box, bool includeEmpty = false)
-    {
-        var ret = new List<List<int>>();
-        var row = GetBoxRow(box);
-        var col = GetBoxCol(box);
-        for (var i = row; i < row + 3; i++)
-        {
-            for (var j = col; j < col + 3; j++)
-            {
-                var list = candidatesDictionary[i][j];
-                if (includeEmpty || list.Count > 0)
-                    ret.Add(list);
-            }
-        }
-
-        return ret;
-    }
-
-    private static int GetBoxBy(int row, int col)
-    {
-        //012
-        //345
-        //678
-        if (row < 3)
-        {
-            if (col < 3)
-                return 0;
-
-            if (col < 6)
-                return 1;
-
-            return 2;
-        }
-
-        if (row < 6)
-        {
-            if (col < 3)
-                return 3;
-
-            if (col < 6)
-                return 4;
-
-            return 5;
-        }
-
-        if (col < 3)
-            return 6;
-
-        if (col < 6)
-            return 7;
-
-        return 8;
-    }
-
-    private static int GetBoxRow(int box)
-    {
-        //012
-        //345
-        //678
-        return box < 3 ? 0 : box < 6 ? 3 : 6;
-    }
-
-    private static int GetBoxCol(int box)
-    {
-        //012
-        //345
-        //678
-        return (box == 0 || box == 3 || box == 6) ? 0 : ((box == 1 || box == 4 || box == 7) ? 3 : 6);
-    }
-
-    private static List<List<int>> GetDim(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary, int dim,
-      bool byRow, bool includeEmpty = false)
-    {
-        var ret = new List<List<int>>();
-        for (var i = 0; i < 9; i++)
-        {
-            if (byRow)
-            {
-                var list = candidatesDictionary[dim][i];
-                if (includeEmpty || list.Count > 0)
-                    ret.Add(list);
-            }
-            else
-            {
-                var list = candidatesDictionary[i][dim];
-                if (includeEmpty || list.Count > 0)
-                    ret.Add(list);
-            }
-        }
-
-        return ret;
-    }
-
     private static void UpdateDictionary(int[,] array, Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary)
     {
         for (var i = 0; i < 9; i++)
@@ -302,43 +203,7 @@ class Solution
         }
     }
 
-    private static List<List<int>> GetMissingInNeighborByRow(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary,
-      int row, int col)
-    {
-        return GetMissingInNeighborByDim(candidatesDictionary, row, col, true);
-    }
-
-    private static List<List<int>> GetMissingInNeighborByCol(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary,
-      int row, int col)
-    {
-        return GetMissingInNeighborByDim(candidatesDictionary, row, col, false);
-    }
-
-    private static List<List<int>> GetMissingInNeighborByDim(Dictionary<int, Dictionary<int, List<int>>> candidatesDictionary,
-      int row, int col, bool byRow)
-    {
-        var ret = new List<List<int>>();
-        var dim = byRow ? col : row;
-        for (var i = dim; i < dim + 3; i++)
-        {
-            if (byRow)
-            {
-                var list = candidatesDictionary[row][i];
-                if (list.Count > 0)
-                    ret.Add(list);
-            }
-            else
-            {
-                var list = candidatesDictionary[i][col];
-                if (list.Count > 0)
-                    ret.Add(list);
-            }
-        }
-
-        return ret;
-    }
-
-    private static Dictionary<int, Dictionary<int, List<int>>> GetAndFillDictionary(int[,] array)
+    private static Dictionary<int, Dictionary<int, List<int>>> GetAndFillDictionary()
     {
         var candidatesDictionary = new Dictionary<int, Dictionary<int, List<int>>>();
         for (var i = 0; i < 9; i++)
@@ -395,7 +260,7 @@ class Solution
             var colNumber = int.Parse(location[1]) + initNeighborColNumber;
 
             var row = array.GetRow(rowNumber);
-            var col = array.GetColumn(colNumber);
+            var col = array.GetCol(colNumber);
 
             var initNeighborRowNumber2 = GetInitNumberForNeighbor(rowNumber);
             var initNeighborColNumber2 = GetInitNumberForNeighbor(colNumber);
@@ -464,21 +329,6 @@ class Solution
         return initNumber;
     }
 
-    private static List<string> Print(int[,] array)
-    {
-        var ret = new List<string>();
-        for (int i = 0; i < 9; i++)
-        {
-            for (int j = 0; j < 9; j++)
-            {
-                Console.Write(array[i, j] + " ");
-            }
-            Console.WriteLine();
-        }
-        Console.WriteLine();
-
-        return ret;
-    }
 
     #endregion
 
@@ -494,7 +344,7 @@ class Solution
         if (missingInRow.Length == 1)
             return missingInRow[0];
 
-        var col = array.GetColumn(colNumber);
+        var col = array.GetCol(colNumber);
         //var colCandidates = GetCol(candidatesDictionary, rowNumber);
         var missingInCol = col.GetMissing();
         if (missingInCol.Length == 1)
@@ -547,12 +397,12 @@ class Solution
     {
         for (var i = 0; i < 9; i++)
         {
-            var sumRow = array.SumRow(i);
-            var sumCol = array.SumCol(i);
-            if (sumRow < 45 || sumCol<45)
+            var sumRow = array.GetRow(i).Sum();
+            var sumCol = array.GetCol(i).Sum();
+            if (sumRow < 45 || sumCol < 45)
                 return false;
 
-            if (sumRow == 45 && sumCol==45)
+            if (sumRow == 45 && sumCol == 45)
                 continue;
 
             //if (exception)
@@ -568,7 +418,7 @@ class Solution
     public static int[,]? Solve(int[,] array, bool backtracking = false)
     {
         var count = 0;
-        var candidatesDictionary = GetAndFillDictionary(array);
+        var candidatesDictionary = GetAndFillDictionary();
         UpdateDictionary(array, candidatesDictionary);
 
         while (!Verify(array))
@@ -641,23 +491,6 @@ class Solution
     }
 
 #if false
-
-    private static Dictionary<int, Dictionary<int, int>> _candidatesDictionarySolution;
-    private static bool checkSol = false;
-    //private static bool checkSol = true;
-
-    private static void LoadSolution(string sol)
-    {
-        _candidatesDictionarySolution = new Dictionary<int, Dictionary<int, int>>();
-        for (int i = 0; i < 9; i++)
-        {
-            _candidatesDictionarySolution.Add(i, new Dictionary<int, int>());
-            for (int j = 0; j < 9; j++)
-            {
-                _candidatesDictionarySolution[i].Add(j, int.Parse(sol[i * 9 + j].ToString()));
-            }
-        }
-    }
 
     public static void SolveTestCases()
     {
@@ -744,12 +577,11 @@ class Solution
 
             foreach (var sudoku in sudokus)
             {
-                //LoadSolution(solutions[count - 1]);
                 var solve2 = sudoku.SplitBySize(9).FilledArray();
+
                 var sw2 = Stopwatch.StartNew();
-
+                
                 solve2 = Solve(solve2);
-
 
                 var secs2 = sw2.ElapsedMilliseconds / 1000.0;
                 total = total + secs2;
@@ -771,7 +603,7 @@ class Solution
 
 #else
 
-   
+
     static void Main(string[] args)
     {
         var sudoku = new int[9, 9];
@@ -786,7 +618,7 @@ class Solution
             }
         }
 
-        var solve= Solve(sudoku);
+        var solve = Solve(sudoku);
 
         for (int i = 0; i < 9; i++)
         {
