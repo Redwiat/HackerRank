@@ -2,7 +2,6 @@
 
 #if Test
 using System.Diagnostics;
-using System.Drawing;
 using System.Text;
 #endif
 
@@ -497,7 +496,7 @@ class Solution
         return board;
     }
 
-    #region BacktTrack
+    #region BackTrack
 
     private static bool BacktrackSolution(int[,] board, int row = 0, int col = 0)
     {
@@ -645,6 +644,7 @@ class Solution
   };
 
         var listTotals = new List<double>();
+        var listTotalsPerSudoku = new List<double>();
         var benchmark = 25;
         for (int i = 0; i < benchmark; i++)
         {
@@ -662,6 +662,7 @@ class Solution
                 sw2.Stop();
 
                 var milliseconds = sw2.Elapsed.Milliseconds;
+                listTotalsPerSudoku.Add(milliseconds);
                 //Console.WriteLine($"Total:   {milliseconds:0}ms");
                 total = total + milliseconds;
             }
@@ -671,6 +672,7 @@ class Solution
         }
 
         Console.WriteLine($"TotalAverage:   {listTotals.Average():0.00}ms");
+        Console.WriteLine($"TotalAverage:   {listTotalsPerSudoku.Average():0.00}ms");
     }
 
     static void Main(string[] args)
