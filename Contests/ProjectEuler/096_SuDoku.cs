@@ -2,16 +2,56 @@
 
 #if Test
 using System.Diagnostics;
+using System.Drawing;
 using System.Text;
 #endif
 
 //Project Euler #96: Su Doku
 //https://www.hackerrank.com/contests/projecteuler/challenges/euler096/problem
 
+
 public static class Extensions
 {
 
     #region Arrays
+
+    public static bool MyContains(this int[] matrix, int value)
+    {
+        //for (int i = 0; i < 9; i++)
+        //    if (matrix[i] == value)
+        //        return true;
+
+        //return false;
+
+        if (matrix[0] == value)
+            return true;
+
+        if (matrix[1] == value)
+            return true;
+
+        if (matrix[2] == value)
+            return true;
+
+        if (matrix[3] == value)
+            return true;
+
+        if (matrix[4] == value)
+            return true;
+
+        if (matrix[5] == value)
+            return true;
+
+        if (matrix[6] == value)
+            return true;
+
+        if (matrix[7] == value)
+            return true;
+
+        if (matrix[8] == value)
+            return true;
+
+        return false;
+    }
 
     public static int[] GetCol(this int[,] matrix, int colNumber)
     {
@@ -35,27 +75,27 @@ public static class Extensions
     public static readonly int[] InitNumberForNeighbor = { 0, 0, 0, 3, 3, 3, 6, 6, 6 };
 
     public static readonly int[] PossibleValues = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    public static int[] GetMissing(this int[] array)
+    public static List<int> GetMissing(this int[] board)
     {
         var missing = new List<int>();
 
         foreach (var item in PossibleValues)
         {
-            if (!array.Contains(item))
+            if (!board.MyContains(item))
                 missing.Add(item);
         }
 
-        return missing.ToArray();
+        return missing;
     }
 
-    public static int[] GetMissing(this int[,] array)
+    public static List<int> GetMissing(this int[,] board)
     {
-        return GetMissing(array.Flat());
+        return GetMissing(board.Flat());
     }
 
-    public static int[] Flat(this int[,] array)
+    public static int[] Flat(this int[,] board)
     {
-        //return array.Cast<int>().ToArray();
+        //return board.Cast<int>().ToArray();
 
         var result = new int[9];
         var index = 0;
@@ -63,7 +103,7 @@ public static class Extensions
         {
             for (int j = 0; j < 3; j++)
             {
-                result[index] = array[i, j];
+                result[index] = board[i, j];
                 index++;
             }
         }
@@ -143,13 +183,13 @@ public static class Extensions
         return result.ToString();
     }
 
-    public static void Print(this int[,] array)
+    public static void Print(this int[,] board)
     {
         for (int i = 0; i < 9; i++)
         {
             for (int j = 0; j < 9; j++)
             {
-                Console.Write(array[i, j] + " ");
+                Console.Write(board[i, j] + " ");
             }
 
             Console.WriteLine();
@@ -186,7 +226,24 @@ class Solution
         return neighbors;
     }
 
-    private static bool CanFitInAnotherPlaceInNeighbours(int[,] array, int missingValue, List<(int Row, int Col)> missingZerosPositions,
+    public static List<int> GetNeighborsFlat(int[,] matrix, int rowNumber, int colNumber)
+    {
+        var initNeighborRowNumber = Extensions.InitNumberForNeighbor[rowNumber];
+        var initNeighborColNumber = Extensions.InitNumberForNeighbor[colNumber];
+        var neighbors = new List<int>(9);
+
+        for (int i = 0; i < 3; i++)
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                neighbors.Add(matrix[initNeighborRowNumber + i, initNeighborColNumber + j]);
+            }
+        }
+
+        return neighbors;
+    }
+
+    private static bool CanFitInAnotherPlaceInBox(int[,] board, int missingValue, List<(int Row, int Col)> missingZerosPositions,
       int rowNumberOriginal, int colNumberOriginal)
     {
         var initNeighborRowNumber = Extensions.InitNumberForNeighbor[rowNumberOriginal];
@@ -198,10 +255,10 @@ class Solution
 
             if (colNumber != colNumberOriginal || rowNumber != rowNumberOriginal)
             {
-                var row = array.GetRow(rowNumber);
-                var col = array.GetCol(colNumber);
+                var row = board.GetRow(rowNumber);
+                var col = board.GetCol(colNumber);
 
-                if (!row.Contains(missingValue) && !col.Contains(missingValue))
+                if (!row.MyContains(missingValue) && !col.MyContains(missingValue))
                     return true;
             }
         }
@@ -209,7 +266,7 @@ class Solution
         return false;
     }
 
-    private static bool CanFitInAnotherPlaceIn(int[,] array, int missingValue, List<(int Row, int Col)> missingZerosPositions,
+    private static bool CanFitInAnotherPlaceIn(int[,] board, int missingValue, List<(int Row, int Col)> missingZerosPositions,
       int rowNumberOriginal, int colNumberOriginal)
     {
         foreach (var item in missingZerosPositions)
@@ -217,23 +274,62 @@ class Solution
             var rowNumber = item.Row;
             var colNumber = item.Col;
 
-            var neighbors = GetNeighbors(array, rowNumber, colNumber);
-
-            var neighborsDoNotContain = !neighbors.Flat().Contains(missingValue);
+            bool neighborsDoNotContain = NeighborsDoNotContain(board, missingValue, rowNumber, colNumber);
             if (neighborsDoNotContain)
             {
-                var row = array.GetRow(rowNumber);
-                var col = array.GetCol(colNumber);
+                var row = board.GetRow(rowNumber);
+                var col = board.GetCol(colNumber);
 
-                if (rowNumber != rowNumberOriginal && !row.Contains(missingValue))
+                if (rowNumber != rowNumberOriginal && !row.MyContains(missingValue))
                     return true;
 
-                if (colNumber != colNumberOriginal && !col.Contains(missingValue))
+                if (colNumber != colNumberOriginal && !col.MyContains(missingValue))
                     return true;
             }
         }
 
         return false;
+    }
+
+    private static bool NeighborsDoNotContain(int[,] board, int missingValue, int rowNumber, int colNumber)
+    {
+        //var initNeighborRowNumber = Extensions.InitNumberForNeighbor[rowNumber];
+        //var initNeighborColNumber = Extensions.InitNumberForNeighbor[colNumber];
+
+        //for (int i = 0; i < 3; i++)
+        //{
+        //    for (int j = 0; j < 3; j++)
+        //    {
+        //        if (board[initNeighborRowNumber + i, initNeighborColNumber + j] == missingValue)
+        //            return false;
+        //    }
+        //}
+
+        //return true;
+
+        var initNeighborRowNumber = Extensions.InitNumberForNeighbor[rowNumber];
+        var initNeighborColNumber = Extensions.InitNumberForNeighbor[colNumber];
+
+        if (board[initNeighborRowNumber + 0, initNeighborColNumber + 0] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 0, initNeighborColNumber + 1] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 0, initNeighborColNumber + 2] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 1, initNeighborColNumber + 0] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 1, initNeighborColNumber + 1] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 1, initNeighborColNumber + 2] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 2, initNeighborColNumber + 0] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 2, initNeighborColNumber + 1] == missingValue)
+            return false;
+        if (board[initNeighborRowNumber + 2, initNeighborColNumber + 2] == missingValue)
+            return false;
+
+        return true;
     }
 
     private static List<(int Row, int Col)> GetMissingZerosPositionsNeighbors(int[,] neighbors)
@@ -251,24 +347,24 @@ class Solution
         return ret;
     }
 
-    private static List<(int Row, int Col)> GetMissingZerosPositionsCol(int[] array, int colNumber)
+    private static List<(int Row, int Col)> GetMissingZerosPositionsCol(int[] board, int colNumber)
     {
         var ret = new List<(int Row, int Col)>(9);
         for (var i = 0; i < 9; i++)
         {
-            if (array[i] == 0)
+            if (board[i] == 0)
                 ret.Add(new(i, colNumber));
         }
 
         return ret;
     }
 
-    private static List<(int Row, int Col)> GetMissingZerosPositionsRow(int[] array, int rowNumber)
+    private static List<(int Row, int Col)> GetMissingZerosPositionsRow(int[] board, int rowNumber)
     {
         var ret = new List<(int Row, int Col)>(9);
         for (var i = 0; i < 9; i++)
         {
-            if (array[i] == 0)
+            if (board[i] == 0)
                 ret.Add(new(rowNumber, i));
         }
 
@@ -277,83 +373,77 @@ class Solution
 
     #endregion
 
-    private static int[] GetPossibilities(int[,] array, int rowNumber, int colNumber)
+
+    private static List<int> _emptyList = new List<int>();
+    private static List<int> GetPossibilities(int[,] board, int rowNumber, int colNumber)
     {
+        if (board[rowNumber, colNumber] != 0)
+            return _emptyList;
+
         var list = Extensions.PossibleValues.ToList();
 
+        var neighbors = GetNeighborsFlat(board, rowNumber, colNumber);
         for (int i = 0; i < 9; i++)
         {
-            list.Remove(array[rowNumber, i]);
-            list.Remove(array[i, colNumber]);
+            list.Remove(board[rowNumber, i]);
+            list.Remove(board[i, colNumber]);
+            list.Remove(neighbors[i]);
         }
 
-        return list.ToArray();
+        return list;
     }
 
-    private static int GetValueTo(int[,] array, int rowNumber, int colNumber)
+    private static int GetValueTo(int[,] board, int rowNumber, int colNumber)
     {
-        var values = GetPossibilities(array, rowNumber, colNumber);
-        if (values.Length == 1)
+        var values = GetPossibilities(board, rowNumber, colNumber);
+        if (values.Count == 1)
             return values.First();
 
-        var row = array.GetRow(rowNumber);
-        //var rowCandidates = GetRow(candidatesDictionary, rowNumber);
+        var row = board.GetRow(rowNumber);
         var missingInRow = row.GetMissing();
-        if (missingInRow.Length == 1)
+        if (missingInRow.Count == 1)
             return missingInRow[0];
 
-        var col = array.GetCol(colNumber);
-        //var colCandidates = GetCol(candidatesDictionary, rowNumber);
+        var col = board.GetCol(colNumber);
         var missingInCol = col.GetMissing();
-        if (missingInCol.Length == 1)
+        if (missingInCol.Count == 1)
             return missingInCol[0];
 
-        //var boxCandidates = GetBox(candidatesDictionary, GetBoxBy(rowNumber, colNumber), true);
-        var neighbors = GetNeighbors(array, rowNumber, colNumber);
+        var neighbors = GetNeighbors(board, rowNumber, colNumber);
         var missingInNei = neighbors.GetMissing();
-        if (missingInNei.Length == 1)
+        if (missingInNei.Count == 1)
             return missingInNei[0];
 
-        var missingValues = missingInNei.Intersect(missingInCol).Intersect(missingInRow).ToArray();
-        if (missingValues.Length == 1)
-            return missingValues.FirstOrDefault();
-
-        foreach (var missingValue in missingValues)
+        var missingZerosPositionsInRow = GetMissingZerosPositionsRow(row, rowNumber);
+        var missingZerosPositionsInCol = GetMissingZerosPositionsCol(col, colNumber);
+        var missingZerosPositionsInNei = GetMissingZerosPositionsNeighbors(neighbors);
+        foreach (var missingValue in values)
         {
-            var missingZerosPositionsInNei = GetMissingZerosPositionsNeighbors(neighbors);
-            if (!CanFitInAnotherPlaceInNeighbours(array, missingValue, missingZerosPositionsInNei, rowNumber, colNumber))
+            if (!CanFitInAnotherPlaceIn(board, missingValue, missingZerosPositionsInRow, rowNumber, colNumber))
             {
                 return missingValue;
             }
 
-            var missingZerosPositionsInRow = GetMissingZerosPositionsRow(row, rowNumber);
-            if (!CanFitInAnotherPlaceIn(array, missingValue, missingZerosPositionsInRow, rowNumber, colNumber))
+            if (!CanFitInAnotherPlaceIn(board, missingValue, missingZerosPositionsInCol, rowNumber, colNumber))
             {
                 return missingValue;
             }
 
-            var missingZerosPositionsInCol = GetMissingZerosPositionsCol(col, colNumber);
-            if (!CanFitInAnotherPlaceIn(array, missingValue, missingZerosPositionsInCol, rowNumber, colNumber))
+            if (!CanFitInAnotherPlaceInBox(board, missingValue, missingZerosPositionsInNei, rowNumber, colNumber))
             {
                 return missingValue;
             }
-
-            //if (!CanFitInAnotherPlaceInBox(rowNumber, colNumber, initNeighborRowNumber, initNeighborColNumber, missingValue, candidatesDictionary))
-            //{
-            //    return missingValue;
-            //}
-
         }
 
         return -1;
     }
 
-    private static bool Verify(int[,] array, bool exception = false)
+    private static bool Verify(int[,] board, bool exception = false)
     {
         for (var i = 0; i < 9; i++)
         {
-            var sumRow = array.GetRow(i).Sum();
-            var sumCol = array.GetCol(i).Sum();
+            var sumRow = board.GetRow(i).Sum();
+            var sumCol = board.GetCol(i).Sum();
             if (sumRow < 45 || sumCol < 45)
                 return false;
 
@@ -370,72 +460,110 @@ class Solution
         return true;
     }
 
-    public static int[,]? Solve(int[,] array, bool backtracking = false)
+    public static int[,]? Solve(int[,] board, bool backtracking = false)
     {
         var count = 0;
-        while (!Verify(array))
+        while (!Verify(board))
         {
             for (var i = 0; i < 9; i++)
             {
                 for (var j = 0; j < 9; j++)
                 {
-                    if (array[i, j] == 0)
+                    if (board[i, j] == 0)
                     {
-                        var ijValue = GetValueTo(array, i, j);
+                        var ijValue = GetValueTo(board, i, j);
                         if (ijValue != -1)
                         {
-                            array[i, j] = ijValue;
-                            //UpdateDictionaryAtPos(array, candidatesDictionary, i, j);
+                            board[i, j] = ijValue;
                         }
                     }
                 }
             }
 
-            if (count > 5)
+            if (count > 4)
             {
                 if (backtracking)
                     return null;
 
-                UseBacktrack(ref array);
+                BacktrackSolution(board);
             }
 
             count++;
         }
 
 #if Test
-        //array.Print();
+        //board.Print();
 #endif
-        return array;
+        return board;
     }
 
-    private static void UseBacktrack(ref int[,] array)
+    #region BacktTrack
+
+    private static bool BacktrackSolution(int[,] board, int row = 0, int col = 0)
     {
-        var initial = array.Copy();
-
-        for (var i = 0; i < 9; i++)
+        if (col == 9)
         {
-            for (var j = 0; j < 9; j++)
-            {
-                if (initial[i, j] == 0)
-                {
-                    var possibilities = GetPossibilities(initial, i, j);
-                    foreach (var possibility in possibilities)
-                    {
-                        initial[i, j] = possibility;
-                        var x = Solve(initial, true);
-                        if (x == null)
-                        {
-                            initial = array.Copy();
-                            continue;
-                        }
+            row += 1;
+            col = 0;
+        }
 
-                        array = initial.Copy();
-                        return;
-                    }
-                }
+        if (row == 9)
+            return true;
+
+        if (board[row, col] != 0)
+        {
+            return BacktrackSolution(board, row, col + 1);
+        }
+
+        for (int i = 1; i <= 9; i++)
+        {
+            if (!ValueIsValid(board, row, col, i))
+                continue;
+
+            board[row, col] = i;
+
+            if (BacktrackSolution(board, row, col + 1) == true)
+                return true;
+
+            board[row, col] = 0;
+        }
+
+        return false;
+    }
+
+    public static readonly int[] InitNumberForNeighbor = { 0, 0, 0, 3, 3, 3, 6, 6, 6 };
+    public static readonly int[] EndNumberForNeighbor = { 2, 2, 2, 5, 5, 5, 8, 8, 8 };
+    private static bool ValueIsValid(int[,] board, int row, int col, int cur)
+    {
+        //Test Row/Col
+        for (int i = 0; i < 9; i++)
+        {
+            if (board[row, i] == cur)
+                return false;
+            if (board[i, col] == cur)
+                return false;
+        }
+
+        //Test Neighbors
+        int rowBorderStart = InitNumberForNeighbor[row];
+        int rowBorderEnd = EndNumberForNeighbor[row];
+
+        int colBorderStart = InitNumberForNeighbor[col];
+        int colBorderEnd = EndNumberForNeighbor[col];
+
+        for (int i = rowBorderStart; i <= rowBorderEnd; i++)
+        {
+            for (int j = colBorderStart; j <= colBorderEnd; j++)
+            {
+                if (board[i, j] == cur)
+                    return false;
             }
         }
+
+        return true;
     }
+
+    #endregion
 
 #if Test
 
@@ -529,17 +657,20 @@ class Solution
                 var sw2 = Stopwatch.StartNew();
 
                 solve2 = Solve(solve2);
+                //solve2.Print();
 
-                var secs2 = sw2.ElapsedMilliseconds / 1000.0;
-                total = total + secs2;
-                //Console.WriteLine($"Took {(count++):00}: {secs2:0.000}s - {solve2.ToString2(0)}");
+                sw2.Stop();
+
+                var milliseconds = sw2.Elapsed.Milliseconds;
+                //Console.WriteLine($"Total:   {milliseconds:0}ms");
+                total = total + milliseconds;
             }
 
-            Console.WriteLine($"Total:   {total:0.000}s");
+            Console.WriteLine($"Total:   {total:0.00}ms");
             listTotals.Add(total);
         }
 
-        Console.WriteLine($"TotalAverage:   {listTotals.Average():0.000}s");
+        Console.WriteLine($"TotalAverage:   {listTotals.Average():0.00}ms");
     }
 
     static void Main(string[] args)
