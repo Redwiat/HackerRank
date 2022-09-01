@@ -1,67 +1,67 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
+//#define Test
 //Project Euler #2: Even Fibonacci numbers
 //https://www.hackerrank.com/contests/projecteuler/challenges/euler002/problem
-class Solution
+public class Solution
 {
+    private static SortedDictionary<long, long> Fibonacci = new() { { 0, 1 }, { 1, 2 }, { 2, 5 }, { 3, 8 } };
+    private static List<long> FibonacciEven = new() { 2, 8 };
 
-  //static SortedDictionary<long, long> Total = new SortedDictionary<long, long>();
-  private static SortedDictionary<long, long> Fibonacci = new SortedDictionary<long, long>() { { 0, 1 }, { 1, 2 }, { 2, 5 }, { 3, 8 } };
-  private static SortedDictionary<long, long> FibonacciEven = new SortedDictionary<long, long>() { { 0, 2 }, { 1, 8 } };
-
-  private static long SumEvenFibonacciUntil(long n)
-  {
-    if (Fibonacci.LastOrDefault().Value < n)
-      throw new Exception("Should have used this method you need all even first!");
-
-    long sum = 0;
-    foreach (var evenFib in FibonacciEven)
+    private static long CalculateFib(long n)
     {
-      if (evenFib.Value > n)
+        if (Fibonacci.ContainsKey(n))
+            return Fibonacci[n];
+
+        if ((n == 0) || (n == 1))
+            return n;
+
+        var returnValue = CalculateFib(n - 1) + CalculateFib(n - 2);
+        if (!Fibonacci.ContainsKey(returnValue))
+        {
+            Fibonacci.Add(n, returnValue);
+            if (returnValue % 2 == 0)
+                FibonacciEven.Add(returnValue);
+        }
+
+        return returnValue;
+    }
+
+    private static void CreateCache(double n)
+    {
+        while (Fibonacci.Last().Value < n)
+            CalculateFib(Fibonacci.Last().Key + 1);
+    }
+    private static long GetSumOfFibonacciUntil(long n)
+    {
+        CreateCache(n);
+
+        long sum = 0;
+        foreach (var evenFib in FibonacciEven)
+        {
+            if (evenFib > n)
+                break;
+
+            sum += evenFib;
+        }
+
         return sum;
-      sum = sum + evenFib.Value;
     }
 
-    return sum;
-  }
-  static long GetSumOfFibonacciUntil(long n)
-  {
-    if (Fibonacci.LastOrDefault().Value >= n)
-      return SumEvenFibonacciUntil(n);
 
-    var count = Fibonacci.Count;
-    var totalDic = Fibonacci.LastOrDefault();
-    long init = totalDic.Key;
-    long last = totalDic.Value;
-    for (long i = init; i <= n; i++)
+    public static void Main(String[] args)
     {
-      var previous = Fibonacci[count - 2];
-      var current = Fibonacci[count - 1];
-      var fib = previous + current;
 
-      Fibonacci.Add(count, fib);
-      if (fib % 2 == 0)
-        FibonacciEven.Add(FibonacciEven.Count, fib);
-
-      count++;
-      if (fib > n)
-        break;
+#if Test
+        Console.WriteLine(GetSumOfFibonacciUntil(10));
+        Console.WriteLine(GetSumOfFibonacciUntil(100));
+        Console.WriteLine(GetSumOfFibonacciUntil((long)(4* (Math.Pow(10, 16)))));
+        Console.ReadLine();
+#else
+        int t = Convert.ToInt32(Console.ReadLine());
+        for (int a0 = 0; a0 < t; a0++)
+        {
+            long n = Convert.ToInt64(Console.ReadLine());
+            Console.WriteLine(GetSumOfFibonacciUntil(n));
+        }
+#endif
     }
-
-    return SumEvenFibonacciUntil(n);
-  }
-
-
-  static void Main(String[] args)
-  {
-    int t = Convert.ToInt32(Console.ReadLine());
-    for (int a0 = 0; a0 < t; a0++)
-    {
-      long n = Convert.ToInt64(Console.ReadLine());
-      Console.WriteLine(GetSumOfFibonacciUntil(n));
-    }
-  }
 }
